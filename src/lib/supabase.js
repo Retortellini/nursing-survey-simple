@@ -17,7 +17,7 @@ export async function submitSurvey(surveyData) {
       experience_level: surveyData.respondentInfo?.experienceLevel,
       unit_type: surveyData.respondentInfo?.unitType,
       typical_patient_load: surveyData.respondentInfo?.typicalPatientLoad,
-      responses: surveyData.responses,
+      responses: surveyData.responses, // Now includes frequency field
       ip_hash: await hashString(getClientIP()),
       user_agent: navigator.userAgent
     }])
