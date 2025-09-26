@@ -1,7 +1,7 @@
 // src/components/Simulation.tsx
 import React, { useState, useEffect } from 'react';
 import { getTaskStatistics, saveSimulationResults } from '../lib/supabase';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Play, RefreshCw } from 'lucide-react';
 
 const Simulation = () => {
@@ -37,7 +37,6 @@ const Simulation = () => {
 
     setLoading(true);
     try {
-      // Simple Monte Carlo simulation
       const simulationResults = [];
 
       for (const nurseRatio of params.nurseRatios) {
@@ -48,16 +47,13 @@ const Simulation = () => {
             let totalRnTime = 0;
             let totalCnaTime = 0;
 
-            // Simulate task times for this iteration
             taskData.forEach(task => {
               const avgTime = (task.avg_min_time + task.avg_max_time) / 2;
               const stdDev = task.std_dev || (task.avg_max_time - task.avg_min_time) / 4;
               
-              // Normal distribution approximation
               const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
               const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
 
-              // Distribute work between RN and CNA
               if (task.task_name.includes('Vital Signs') || 
                   task.task_name.includes('Hygiene') || 
                   task.task_name.includes('Mobility')) {
@@ -67,7 +63,6 @@ const Simulation = () => {
               }
             });
 
-            // Check if shift is completable
             const shiftMinutes = params.shiftHours * 60;
             if (totalRnTime <= shiftMinutes && totalCnaTime <= shiftMinutes) {
               completedShifts++;
@@ -80,14 +75,13 @@ const Simulation = () => {
             nurseRatio: `1:${nurseRatio}`,
             cnaRatio: `1:${cnaRatio}`,
             completionRate: Math.round(completionRate * 10) / 10,
-            avgWorkload: Math.round((100 - completionRate) / 10) // Simple workload score
+            avgWorkload: Math.round((100 - completionRate) / 10)
           });
         }
       }
 
       setResults(simulationResults);
 
-      // Save to database
       await saveSimulationResults({
         cna_ratios: params.cnaRatios,
         nurse_ratios: params.nurseRatios,
@@ -107,16 +101,6 @@ const Simulation = () => {
   const getChartData = () => {
     if (!results) return [];
     
-    // Group by nurse ratio for line chart
-    const grouped = {};
-    results.forEach(r => {
-      if (!grouped[r.nurseRatio]) {
-        grouped[r.nurseRatio] = [];
-      }
-      grouped[r.nurseRatio].push(r);
-    });
-
-    // Format for chart
     const chartData = params.cnaRatios.map(cnaRatio => {
       const point = { cnaRatio: `1:${cnaRatio}` };
       params.nurseRatios.forEach(nurseRatio => {
@@ -137,7 +121,6 @@ const Simulation = () => {
     <div className="max-w-7xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Workload Simulation</h1>
 
-      {/* Task Data Status */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <p className="text-sm text-blue-800">
           <strong>Available Task Data:</strong> {taskData.length} tasks with sufficient responses
@@ -145,11 +128,33 @@ const Simulation = () => {
         </p>
       </div>
 
-      {/* Simulation Parameters */}
       <div className="bg-white rounded-lg shadow p-6 mb-8">
         <h2 className="text-lg font-semibold mb-4">Simulation Parameters</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium mb-2">CNA:Patient Ratios</label>
+            <div className="space-y-2">
+              {[8, 10, 12, 14].map(ratio => (
+                <label key={ratio} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={params.cnaRatios.includes(ratio)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setParams({ ...params, cnaRatios: [...params.cnaRatios, ratio].sort() });
+                      } else {
+                        setParams({ ...params, cnaRatios: params.cnaRatios.filter(r => r !== ratio) });
+                      }
+                    }}
+                    className="rounded"
+                  />
+                  <span>1:{ratio}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-2">RN:Patient Ratios</label>
             <div className="space-y-2">
@@ -219,10 +224,8 @@ const Simulation = () => {
         </button>
       </div>
 
-      {/* Results */}
       {results && (
         <>
-          {/* Completion Rate Chart */}
           <div className="bg-white rounded-lg shadow p-6 mb-8">
             <h2 className="text-lg font-semibold mb-4">Task Completion Rates by Staffing Ratio</h2>
             <div className="h-96">
@@ -250,7 +253,6 @@ const Simulation = () => {
             </p>
           </div>
 
-          {/* Results Table */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4">Detailed Results</h2>
             <div className="overflow-x-auto">
@@ -285,7 +287,6 @@ const Simulation = () => {
             </div>
           </div>
 
-          {/* Recommendations */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-8">
             <h3 className="text-lg font-semibold mb-3">Recommendations</h3>
             <ul className="space-y-2 text-sm">
@@ -313,26 +314,4 @@ const Simulation = () => {
   );
 };
 
-export default Simulation;<label className="block text-sm font-medium mb-2">CNA:Patient Ratios</label>
-            <div className="space-y-2">
-              {[8, 10, 12, 14].map(ratio => (
-                <label key={ratio} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={params.cnaRatios.includes(ratio)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setParams({ ...params, cnaRatios: [...params.cnaRatios, ratio].sort() });
-                      } else {
-                        setParams({ ...params, cnaRatios: params.cnaRatios.filter(r => r !== ratio) });
-                      }
-                    }}
-                    className="rounded"
-                  />
-                  <span>1:{ratio}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div></div>
+export default Simulation;
