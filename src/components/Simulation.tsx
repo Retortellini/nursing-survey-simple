@@ -47,44 +47,52 @@ const Simulation = () => {
             let totalRnTime = 0;
             let totalCnaTime = 0;
 
-            // Calculate time for RN tasks across all patients
-            for (let patient = 0; patient < nurseRatio; patient++) {
-              taskData.forEach(task => {
-                // Skip CNA-delegatable tasks for RN calculation
-                if (task.task_name.includes('Vital Signs') || 
-                    task.task_name.includes('Hygiene') || 
-                    task.task_name.includes('Mobility')) {
-                  return;
-                }
-
-                const avgTime = (task.avg_min_time + task.avg_max_time) / 2;
-                const stdDev = task.std_dev || (task.avg_max_time - task.avg_min_time) / 4;
-                
+            // RN tasks - some per-patient, some per-shift
+            taskData.forEach(task => {
+              const avgTime = (task.avg_min_time + task.avg_max_time) / 2;
+              const stdDev = task.std_dev || (task.avg_max_time - task.avg_min_time) / 4;
+              
+              // Check if this is a CNA-delegatable task
+              const isCnaTask = task.task_name.toLowerCase().includes('vital') || 
+                               task.task_name.toLowerCase().includes('hygiene') || 
+                               task.task_name.toLowerCase().includes('mobility') ||
+                               task.task_name.toLowerCase().includes('toileting') ||
+                               task.task_name.toLowerCase().includes('feeding');
+              
+              if (!isCnaTask) {
+                // RN task
                 const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
                 const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
                 
-                totalRnTime += taskTime;
-              });
-            }
-
-            // Calculate time for CNA tasks across all patients
-            for (let patient = 0; patient < cnaRatio; patient++) {
-              taskData.forEach(task => {
-                // Only CNA-delegatable tasks
-                if (task.task_name.includes('Vital Signs') || 
-                    task.task_name.includes('Hygiene') || 
-                    task.task_name.includes('Mobility')) {
-                  
-                  const avgTime = (task.avg_min_time + task.avg_max_time) / 2;
-                  const stdDev = task.std_dev || (task.avg_max_time - task.avg_min_time) / 4;
-                  
-                  const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
-                  const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
-                  
-                  totalCnaTime += taskTime;
+                // Some tasks are per-shift, others per-patient
+                if (task.task_name.toLowerCase().includes('handoff') || 
+                    task.task_name.toLowerCase().includes('report')) {
+                  // One-time per shift
+                  totalRnTime += taskTime;
+                } else {
+                  // Per patient
+                  totalRnTime += taskTime * nurseRatio;
                 }
-              });
-            }
+              }
+            });
+
+            // CNA tasks - per patient
+            taskData.forEach(task => {
+              const avgTime = (task.avg_min_time + task.avg_max_time) / 2;
+              const stdDev = task.std_dev || (task.avg_max_time - task.avg_min_time) / 4;
+              
+              const isCnaTask = task.task_name.toLowerCase().includes('vital') || 
+                               task.task_name.toLowerCase().includes('hygiene') || 
+                               task.task_name.toLowerCase().includes('mobility') ||
+                               task.task_name.toLowerCase().includes('toileting') ||
+                               task.task_name.toLowerCase().includes('feeding');
+              
+              if (isCnaTask) {
+                const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
+                const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
+                totalCnaTime += taskTime * cnaRatio;
+              }
+            });
 
             const shiftMinutes = params.shiftHours * 60;
             if (totalRnTime <= shiftMinutes && totalCnaTime <= shiftMinutes) {
