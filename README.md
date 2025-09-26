@@ -62,15 +62,15 @@ Your Supabase database is already set up with:
 ### 4. You're Live! 🎉
 
 Your survey platform will be available at:
-- `https://your-app-name.netlify.app`
+- `https://tasksurvey.netlify.app/`
 
 ## 📋 How to Use
 
 ### For Survey Participants
 
 **Share these links:**
-- RN Survey: `https://your-app-name.netlify.app/survey/nurse`
-- CNA Survey: `https://your-app-name.netlify.app/survey/cna`
+- RN Survey: `https://tasksurvey.netlify.app/survey/nurse`
+- CNA Survey: `https://tasksurvey.netlify.app/survey/cna`
 
 Can be shared via:
 - Email
@@ -81,8 +81,8 @@ Can be shared via:
 ### For Administrators
 
 **View and analyze:**
-- Results: `https://your-app-name.netlify.app/results`
-- Simulations: `https://your-app-name.netlify.app/simulation`
+- Results: `https://tasksurvey.netlify.app/results`
+- Simulations: `https://tasksurvey.netlify.app/simulation`
 
 ## 🔧 Configuration
 

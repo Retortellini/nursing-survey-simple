@@ -47,21 +47,44 @@ const Simulation = () => {
             let totalRnTime = 0;
             let totalCnaTime = 0;
 
-            taskData.forEach(task => {
-              const avgTime = (task.avg_min_time + task.avg_max_time) / 2;
-              const stdDev = task.std_dev || (task.avg_max_time - task.avg_min_time) / 4;
-              
-              const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
-              const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
+            // Calculate time for RN tasks across all patients
+            for (let patient = 0; patient < nurseRatio; patient++) {
+              taskData.forEach(task => {
+                // Skip CNA-delegatable tasks for RN calculation
+                if (task.task_name.includes('Vital Signs') || 
+                    task.task_name.includes('Hygiene') || 
+                    task.task_name.includes('Mobility')) {
+                  return;
+                }
 
-              if (task.task_name.includes('Vital Signs') || 
-                  task.task_name.includes('Hygiene') || 
-                  task.task_name.includes('Mobility')) {
-                totalCnaTime += taskTime * cnaRatio;
-              } else {
-                totalRnTime += taskTime * nurseRatio;
-              }
-            });
+                const avgTime = (task.avg_min_time + task.avg_max_time) / 2;
+                const stdDev = task.std_dev || (task.avg_max_time - task.avg_min_time) / 4;
+                
+                const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
+                const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
+                
+                totalRnTime += taskTime;
+              });
+            }
+
+            // Calculate time for CNA tasks across all patients
+            for (let patient = 0; patient < cnaRatio; patient++) {
+              taskData.forEach(task => {
+                // Only CNA-delegatable tasks
+                if (task.task_name.includes('Vital Signs') || 
+                    task.task_name.includes('Hygiene') || 
+                    task.task_name.includes('Mobility')) {
+                  
+                  const avgTime = (task.avg_min_time + task.avg_max_time) / 2;
+                  const stdDev = task.std_dev || (task.avg_max_time - task.avg_min_time) / 4;
+                  
+                  const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
+                  const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
+                  
+                  totalCnaTime += taskTime;
+                }
+              });
+            }
 
             const shiftMinutes = params.shiftHours * 60;
             if (totalRnTime <= shiftMinutes && totalCnaTime <= shiftMinutes) {
