@@ -102,7 +102,7 @@ const CNASurvey = () => {
     setResponses(prev => ({
       ...prev,
       [taskName]: {
-        ...(prev[taskName] || { minTime: '', maxTime: '', pattern: '', factors: [] }),
+        ...(prev[taskName] || { minTime: '', maxTime: '', pattern: '', frequency: '', factors: [] }),
         [field]: value
       }
     }));
@@ -133,7 +133,7 @@ const CNASurvey = () => {
     const section = taskSections[currentStep - 1];
     return section.tasks.every(task => {
       const resp = responses[task.name];
-      return resp && resp.minTime && resp.maxTime && resp.pattern;
+      return resp && resp.minTime && resp.maxTime && resp.pattern && resp.frequency;
     });
   };
 
@@ -300,6 +300,24 @@ const CNASurvey = () => {
                     <option value="consistent">Consistent (Similar times usually)</option>
                     <option value="variable">Variable (Often differs)</option>
                     <option value="highly_variable">Highly Variable (Very unpredictable)</option>
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">
+                    How Often Does This Task Occur? <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    className="w-full p-2 border rounded"
+                    value={responses[task.name]?.frequency || ''}
+                    onChange={(e) => handleTaskResponseChange(task.name, 'frequency', e.target.value)}
+                  >
+                    <option value="">Select frequency...</option>
+                    <option value="1.0">Every patient, every shift (100%)</option>
+                    <option value="0.75">Most patients (75%)</option>
+                    <option value="0.5">About half the patients (50%)</option>
+                    <option value="0.25">Occasionally (25%)</option>
+                    <option value="0.1">Rarely (10%)</option>
                   </select>
                 </div>
               </div>
