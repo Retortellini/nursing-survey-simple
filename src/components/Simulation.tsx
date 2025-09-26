@@ -37,6 +37,37 @@ const Simulation = () => {
 
     setLoading(true);
     try {
+      // Get frequency data from survey responses
+      const frequencyData = {};
+      const responses = await fetch(`https://ulwvuntjsgqzajhptskk.supabase.co/rest/v1/survey_responses?select=responses`, {
+        headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsd3Z1bnRqc2dxemFqaHB0c2trIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MDY0NTEsImV4cCI6MjA3NDQ4MjQ1MX0.7cVEaFV5rHte20K7S0j65QgCOcB01tjiRvoayOvQmE0'
+        }
+      });
+      const surveyData = await responses.json();
+      
+      // Calculate average frequency for each task
+      surveyData.forEach(response => {
+        if (response.responses) {
+          Object.entries(response.responses).forEach(([taskName, taskInfo]) => {
+            if (!frequencyData[taskName]) {
+              frequencyData[taskName] = [];
+            }
+            if (taskInfo.frequency) {
+              frequencyData[taskName].push(parseFloat(taskInfo.frequency));
+            }
+          });
+        }
+      });
+
+      // Calculate average frequency per task
+      const avgFrequencies = {};
+      Object.entries(frequencyData).forEach(([taskName, frequencies]) => {
+        avgFrequencies[taskName] = frequencies.length > 0
+          ? frequencies.reduce((a, b) => a + b, 0) / frequencies.length
+          : 0.5; // Default to 50% if no frequency data
+      });
+
       const simulationResults = [];
 
       for (const nurseRatio of params.nurseRatios) {
@@ -47,12 +78,11 @@ const Simulation = () => {
             let totalRnTime = 0;
             let totalCnaTime = 0;
 
-            // RN tasks - some per-patient, some per-shift
+            // RN tasks
             taskData.forEach(task => {
               const avgTime = (task.avg_min_time + task.avg_max_time) / 2;
               const stdDev = task.std_dev || (task.avg_max_time - task.avg_min_time) / 4;
               
-              // Check if this is a CNA-delegatable task
               const isCnaTask = task.task_name.toLowerCase().includes('vital') || 
                                task.task_name.toLowerCase().includes('hygiene') || 
                                task.task_name.toLowerCase().includes('mobility') ||
@@ -60,23 +90,26 @@ const Simulation = () => {
                                task.task_name.toLowerCase().includes('feeding');
               
               if (!isCnaTask) {
-                // RN task
                 const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
                 const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
+                const probability = avgFrequencies[task.task_name] || 0.5;
                 
-                // Some tasks are per-shift, others per-patient
+                // One-time tasks vs per-patient tasks
                 if (task.task_name.toLowerCase().includes('handoff') || 
                     task.task_name.toLowerCase().includes('report')) {
-                  // One-time per shift
-                  totalRnTime += taskTime;
+                  totalRnTime += taskTime; // Once per shift
                 } else {
-                  // Per patient
-                  totalRnTime += taskTime * nurseRatio;
+                  // Per patient, using survey-reported frequency
+                  for (let p = 0; p < nurseRatio; p++) {
+                    if (Math.random() < probability) {
+                      totalRnTime += taskTime;
+                    }
+                  }
                 }
               }
             });
 
-            // CNA tasks - per patient
+            // CNA tasks
             taskData.forEach(task => {
               const avgTime = (task.avg_min_time + task.avg_max_time) / 2;
               const stdDev = task.std_dev || (task.avg_max_time - task.avg_min_time) / 4;
@@ -90,7 +123,13 @@ const Simulation = () => {
               if (isCnaTask) {
                 const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
                 const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
-                totalCnaTime += taskTime * cnaRatio;
+                const probability = avgFrequencies[task.task_name] || 0.5;
+                
+                for (let p = 0; p < cnaRatio; p++) {
+                  if (Math.random() < probability) {
+                    totalCnaTime += taskTime;
+                  }
+                }
               }
             });
 
