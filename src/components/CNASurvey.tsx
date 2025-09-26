@@ -231,6 +231,7 @@ const CNASurvey = () => {
               >
                 <option value="">Select unit type...</option>
                 <option value="med-surg">Medical-Surgical</option>
+                <option value="med-tele">Medical-Telemetry</option>
                 <option value="icu">Intensive Care (ICU/CCU)</option>
                 <option value="ed">Emergency Department</option>
                 <option value="ltc">Long-term Care</option>
