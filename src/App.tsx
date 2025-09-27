@@ -1,4 +1,4 @@
-// src/App.tsx - UPDATED with Data Quality route
+// src/App.tsx - UPDATED with Comparative Analytics route
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Activity } from 'lucide-react';
@@ -9,6 +9,7 @@ import Results from './components/Results';
 import Simulation from './components/Simulation';
 import RealtimeAnalytics from './components/RealtimeAnalytics';
 import DataQuality from './components/DataQuality';
+import ComparativeAnalytics from './components/ComparativeAnalytics';
 
 const Header = () => {
   const location = useLocation();
@@ -56,6 +57,12 @@ const Header = () => {
               Data Quality
             </Link>
             <Link 
+              to="/comparative" 
+              className={`text-sm font-medium ${isActive('/comparative') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+            >
+              Comparative
+            </Link>
+            <Link 
               to="/results" 
               className={`text-sm font-medium ${isActive('/results') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
             >
@@ -87,6 +94,7 @@ const App = () => {
             <Route path="/survey/cna" element={<CNASurvey />} />
             <Route path="/analytics" element={<RealtimeAnalytics />} />
             <Route path="/quality" element={<DataQuality />} />
+            <Route path="/comparative" element={<ComparativeAnalytics />} />
             <Route path="/results" element={<Results />} />
             <Route path="/simulation" element={<Simulation />} />
           </Routes>
