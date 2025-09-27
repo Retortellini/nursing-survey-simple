@@ -1,4 +1,4 @@
-// src/App.tsx - UPDATED with Analytics route
+// src/App.tsx - UPDATED with Data Quality route
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Activity } from 'lucide-react';
@@ -8,6 +8,7 @@ import CNASurvey from './components/CNASurvey';
 import Results from './components/Results';
 import Simulation from './components/Simulation';
 import RealtimeAnalytics from './components/RealtimeAnalytics';
+import DataQuality from './components/DataQuality';
 
 const Header = () => {
   const location = useLocation();
@@ -49,6 +50,12 @@ const Header = () => {
               Analytics
             </Link>
             <Link 
+              to="/quality" 
+              className={`text-sm font-medium ${isActive('/quality') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+            >
+              Data Quality
+            </Link>
+            <Link 
               to="/results" 
               className={`text-sm font-medium ${isActive('/results') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
             >
@@ -79,6 +86,7 @@ const App = () => {
             <Route path="/survey/nurse" element={<NurseSurvey />} />
             <Route path="/survey/cna" element={<CNASurvey />} />
             <Route path="/analytics" element={<RealtimeAnalytics />} />
+            <Route path="/quality" element={<DataQuality />} />
             <Route path="/results" element={<Results />} />
             <Route path="/simulation" element={<Simulation />} />
           </Routes>
