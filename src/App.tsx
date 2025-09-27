@@ -1,7 +1,9 @@
-// src/App.tsx -  with Advanced Visualizations
+// src/App.tsx - WITH PASSWORD PROTECTION
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Activity } from 'lucide-react';
+import { Activity, LogOut } from 'lucide-react';
+import { usePasswordAuth } from './hooks/usePasswordAuth';
+import { PasswordProtect } from './components/PasswordProtect';
 import Dashboard from './components/Dashboard';
 import NurseSurvey from './components/NurseSurvey';
 import CNASurvey from './components/CNASurvey';
@@ -15,8 +17,13 @@ import AdvancedVisualizations from './components/AdvancedVisualizations';
 
 const Header = () => {
   const location = useLocation();
+  const { isAuthenticated, userLevel, logout } = usePasswordAuth();
   
   const isActive = (path: string) => location.pathname === path;
+  
+  // Determine which nav items to show based on auth level
+  const showAnalytics = isAuthenticated;
+  const showAdmin = userLevel === 'admin';
   
   return (
     <header className="bg-white shadow-sm">
@@ -46,48 +53,71 @@ const Header = () => {
             >
               CNA Survey
             </Link>
-            <Link 
-              to="/analytics" 
-              className={`text-sm font-medium ${isActive('/analytics') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
-            >
-              Analytics
-            </Link>
-            <Link 
-              to="/quality" 
-              className={`text-sm font-medium ${isActive('/quality') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
-            >
-              Quality
-            </Link>
-            <Link 
-              to="/comparative" 
-              className={`text-sm font-medium ${isActive('/comparative') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
-            >
-              Compare
-            </Link>
-            <Link 
-              to="/visualizations" 
-              className={`text-sm font-medium ${isActive('/visualizations') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
-            >
-              Visualize
-            </Link>
-            <Link 
-              to="/results" 
-              className={`text-sm font-medium ${isActive('/results') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
-            >
-              Results
-            </Link>
-            <Link 
-              to="/simulation" 
-              className={`text-sm font-medium ${isActive('/simulation') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
-            >
-              Simulate
-            </Link>
-            <Link 
-              to="/enhanced-simulation" 
-              className={`text-sm font-medium ${isActive('/enhanced-simulation') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
-            >
-              Enhanced
-            </Link>
+            
+            {/* Analytics section - requires password */}
+            {showAnalytics && (
+              <>
+                <Link 
+                  to="/analytics" 
+                  className={`text-sm font-medium ${isActive('/analytics') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+                >
+                  Analytics
+                </Link>
+                <Link 
+                  to="/quality" 
+                  className={`text-sm font-medium ${isActive('/quality') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+                >
+                  Quality
+                </Link>
+                <Link 
+                  to="/comparative" 
+                  className={`text-sm font-medium ${isActive('/comparative') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+                >
+                  Compare
+                </Link>
+                <Link 
+                  to="/visualizations" 
+                  className={`text-sm font-medium ${isActive('/visualizations') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+                >
+                  Visualize
+                </Link>
+                <Link 
+                  to="/results" 
+                  className={`text-sm font-medium ${isActive('/results') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+                >
+                  Results
+                </Link>
+              </>
+            )}
+            
+            {/* Admin section - requires admin password */}
+            {showAdmin && (
+              <>
+                <Link 
+                  to="/simulation" 
+                  className={`text-sm font-medium ${isActive('/simulation') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+                >
+                  Simulate
+                </Link>
+                <Link 
+                  to="/enhanced-simulation" 
+                  className={`text-sm font-medium ${isActive('/enhanced-simulation') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+                >
+                  Enhanced
+                </Link>
+              </>
+            )}
+
+            {/* Logout button */}
+            {isAuthenticated && (
+              <button
+                onClick={logout}
+                className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-red-600 ml-4"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
+            )}
           </nav>
         </div>
       </div>
@@ -103,16 +133,49 @@ const App = () => {
         
         <main className="container mx-auto py-8">
           <Routes>
+            {/* PUBLIC ROUTES - No password needed */}
             <Route path="/" element={<Dashboard />} />
             <Route path="/survey/nurse" element={<NurseSurvey />} />
             <Route path="/survey/cna" element={<CNASurvey />} />
-            <Route path="/analytics" element={<RealtimeAnalytics />} />
-            <Route path="/quality" element={<DataQuality />} />
-            <Route path="/comparative" element={<ComparativeAnalytics />} />
-            <Route path="/visualizations" element={<AdvancedVisualizations />} />
-            <Route path="/results" element={<Results />} />
-            <Route path="/simulation" element={<Simulation />} />
-            <Route path="/enhanced-simulation" element={<EnhancedSimulation />} />
+            
+            {/* ANALYTICS ROUTES - Analytics password required */}
+            <Route path="/analytics" element={
+              <PasswordProtect level="analytics">
+                <RealtimeAnalytics />
+              </PasswordProtect>
+            } />
+            <Route path="/quality" element={
+              <PasswordProtect level="analytics">
+                <DataQuality />
+              </PasswordProtect>
+            } />
+            <Route path="/comparative" element={
+              <PasswordProtect level="analytics">
+                <ComparativeAnalytics />
+              </PasswordProtect>
+            } />
+            <Route path="/visualizations" element={
+              <PasswordProtect level="analytics">
+                <AdvancedVisualizations />
+              </PasswordProtect>
+            } />
+            <Route path="/results" element={
+              <PasswordProtect level="analytics">
+                <Results />
+              </PasswordProtect>
+            } />
+            
+            {/* ADMIN ROUTES - Admin password required */}
+            <Route path="/simulation" element={
+              <PasswordProtect level="admin">
+                <Simulation />
+              </PasswordProtect>
+            } />
+            <Route path="/enhanced-simulation" element={
+              <PasswordProtect level="admin">
+                <EnhancedSimulation />
+              </PasswordProtect>
+            } />
           </Routes>
         </main>
         
