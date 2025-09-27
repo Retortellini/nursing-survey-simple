@@ -1,4 +1,4 @@
-// src/App.tsx - UPDATED with Enhanced Simulation route
+// src/App.tsx -  with Advanced Visualizations
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Activity } from 'lucide-react';
@@ -11,6 +11,7 @@ import EnhancedSimulation from './components/EnhancedSimulation';
 import RealtimeAnalytics from './components/RealtimeAnalytics';
 import DataQuality from './components/DataQuality';
 import ComparativeAnalytics from './components/ComparativeAnalytics';
+import AdvancedVisualizations from './components/AdvancedVisualizations';
 
 const Header = () => {
   const location = useLocation();
@@ -26,7 +27,7 @@ const Header = () => {
             <span className="text-xl font-bold text-gray-900">Nursing Workload Platform</span>
           </Link>
           
-          <nav className="hidden md:flex items-center space-x-6">
+          <nav className="hidden md:flex items-center space-x-4">
             <Link 
               to="/" 
               className={`text-sm font-medium ${isActive('/') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
@@ -37,7 +38,7 @@ const Header = () => {
               to="/survey/nurse" 
               className={`text-sm font-medium ${isActive('/survey/nurse') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
             >
-              Nurse Survey
+              RN Survey
             </Link>
             <Link 
               to="/survey/cna" 
@@ -61,7 +62,13 @@ const Header = () => {
               to="/comparative" 
               className={`text-sm font-medium ${isActive('/comparative') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
             >
-              Comparative
+              Compare
+            </Link>
+            <Link 
+              to="/visualizations" 
+              className={`text-sm font-medium ${isActive('/visualizations') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+            >
+              Visualize
             </Link>
             <Link 
               to="/results" 
@@ -73,7 +80,7 @@ const Header = () => {
               to="/simulation" 
               className={`text-sm font-medium ${isActive('/simulation') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
             >
-              Simulation
+              Simulate
             </Link>
             <Link 
               to="/enhanced-simulation" 
@@ -102,6 +109,7 @@ const App = () => {
             <Route path="/analytics" element={<RealtimeAnalytics />} />
             <Route path="/quality" element={<DataQuality />} />
             <Route path="/comparative" element={<ComparativeAnalytics />} />
+            <Route path="/visualizations" element={<AdvancedVisualizations />} />
             <Route path="/results" element={<Results />} />
             <Route path="/simulation" element={<Simulation />} />
             <Route path="/enhanced-simulation" element={<EnhancedSimulation />} />
