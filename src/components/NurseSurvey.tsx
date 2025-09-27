@@ -89,6 +89,56 @@ const NurseSurvey = () => {
           timeRange: "10-25"
         }
       ]
+    },
+    {
+      title: "Additional Patient Care Tasks",
+      tasks: [
+        {
+          name: "Tooth Brushing",
+          description: "Assisting with or performing oral hygiene",
+          timeRange: "5-10"
+        },
+        {
+          name: "Ambulation",
+          description: "Assisting patient with walking",
+          timeRange: "10-20"
+        },
+        {
+          name: "Out Of Bed For Meals",
+          description: "Getting patient up and positioned for meals",
+          timeRange: "10-15"
+        },
+        {
+          name: "Turns",
+          description: "Repositioning patients for comfort and skin integrity",
+          timeRange: "5-10"
+        },
+        {
+          name: "I/O's",
+          description: "Recording intake and output measurements",
+          timeRange: "5-10"
+        }
+      ]
+    },
+    {
+      title: "Emergency & Critical Tasks",
+      tasks: [
+        {
+          name: "Code Blue",
+          description: "Responding to cardiac/respiratory arrest",
+          timeRange: "30-60"
+        },
+        {
+          name: "Rapid Response",
+          description: "Responding to patient deterioration",
+          timeRange: "20-45"
+        },
+        {
+          name: "M.D. Rounds",
+          description: "Participating in physician rounds",
+          timeRange: "15-30"
+        }
+      ]
     }
   ];
 
