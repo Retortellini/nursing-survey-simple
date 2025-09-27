@@ -30,11 +30,6 @@ const CNASurvey = () => {
           timeRange: "5-10"
         },
         {
-          name: "Blood Glucose Checks",
-          description: "Including preparation, check, and documentation",
-          timeRange: "5-10"
-        },
-        {
           name: "I&O Monitoring",
           description: "Measuring and recording intake/output",
           timeRange: "5-10"
@@ -72,27 +67,12 @@ const CNASurvey = () => {
       ]
     },
     {
-      title: "Room & Equipment Management",
+      title: "Room Management",
       tasks: [
         {
           name: "Room Turnover",
           description: "Preparing room for new patient",
           timeRange: "5-15"
-        },
-        {
-          name: "Supply Restocking",
-          description: "Maintaining room supplies",
-          timeRange: "5-15"
-        },
-        {
-          name: "Equipment Management",
-          description: "Cleaning and organizing equipment",
-          timeRange: "5-10"
-        },
-        {
-          name: "Patient Transport",
-          description: "Transporting patients to tests/procedures",
-          timeRange: "15-30"
         }
       ]
     }
