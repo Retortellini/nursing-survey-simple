@@ -1,7 +1,7 @@
-// src/components/NurseSurvey.tsx
-import React, { useState } from 'react';
+// src/components/NurseSurvey.tsx - UPDATED with analytics tracking
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { submitSurvey } from '../lib/supabase';
+import { submitSurvey, createSurveySession, updateSurveySession, trackSurveyStep } from '../lib/supabase';
 import { CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 
 const NurseSurvey = () => {
@@ -9,6 +9,7 @@ const NurseSurvey = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
 
   const [respondentInfo, setRespondentInfo] = useState({
     primaryShift: '',
@@ -89,58 +90,56 @@ const NurseSurvey = () => {
           timeRange: "10-25"
         }
       ]
-    },
-    {
-      title: "Additional Patient Care Tasks",
-      tasks: [
-        {
-          name: "Tooth Brushing",
-          description: "Assisting with or performing oral hygiene",
-          timeRange: "5-10"
-        },
-        {
-          name: "Ambulation",
-          description: "Assisting patient with walking",
-          timeRange: "10-20"
-        },
-        {
-          name: "Out Of Bed For Meals",
-          description: "Getting patient up and positioned for meals",
-          timeRange: "10-15"
-        },
-        {
-          name: "Turns",
-          description: "Repositioning patients for comfort and skin integrity",
-          timeRange: "5-10"
-        },
-        {
-          name: "I/O's",
-          description: "Recording intake and output measurements",
-          timeRange: "5-10"
-        }
-      ]
-    },
-    {
-      title: "Emergency & Critical Tasks",
-      tasks: [
-        {
-          name: "Code Blue",
-          description: "Responding to cardiac/respiratory arrest",
-          timeRange: "30-60"
-        },
-        {
-          name: "Rapid Response",
-          description: "Responding to patient deterioration",
-          timeRange: "20-45"
-        },
-        {
-          name: "M.D. Rounds",
-          description: "Participating in physician rounds",
-          timeRange: "15-30"
-        }
-      ]
     }
   ];
+
+  // Initialize session on component mount
+  useEffect(() => {
+    const initSession = async () => {
+      try {
+        const totalSteps = taskSections.length + 1; // +1 for respondent info
+        const newSessionId = await createSurveySession('rn', totalSteps);
+        setSessionId(newSessionId);
+        
+        // Track initial step
+        await trackSurveyStep(newSessionId, 0, 'Respondent Information');
+      } catch (error) {
+        console.error('Error creating session:', error);
+      }
+    };
+
+    initSession();
+  }, []);
+
+  // Track step changes
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const trackStep = async () => {
+      try {
+        // Complete previous step
+        if (currentStep > 0) {
+          const prevStepName = currentStep === 1 
+            ? 'Respondent Information' 
+            : taskSections[currentStep - 2].title;
+          await trackSurveyStep(sessionId, currentStep - 1, prevStepName, true);
+        }
+
+        // Enter new step
+        const stepName = currentStep === 0 
+          ? 'Respondent Information' 
+          : taskSections[currentStep - 1].title;
+        await trackSurveyStep(sessionId, currentStep, stepName);
+
+        // Update session progress
+        await updateSurveySession(sessionId, currentStep);
+      } catch (error) {
+        console.error('Error tracking step:', error);
+      }
+    };
+
+    trackStep();
+  }, [currentStep, sessionId]);
 
   const handleTaskResponseChange = (taskName, field, value) => {
     setResponses(prev => ({
@@ -155,11 +154,23 @@ const NurseSurvey = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      // Complete final step
+      if (sessionId) {
+        await trackSurveyStep(
+          sessionId, 
+          currentStep, 
+          taskSections[currentStep - 1].title, 
+          true
+        );
+        await updateSurveySession(sessionId, currentStep, true);
+      }
+
       await submitSurvey({
         surveyType: 'rn',
         respondentInfo,
         responses
       });
+      
       setSubmitted(true);
     } catch (error) {
       console.error('Error submitting survey:', error);
@@ -208,6 +219,9 @@ const NurseSurvey = () => {
             style={{ width: `${(currentStep / (taskSections.length + 1)) * 100}%` }}
           />
         </div>
+        <p className="text-sm text-gray-600 mt-2">
+          Step {currentStep + 1} of {taskSections.length + 1}
+        </p>
       </div>
 
       <div className="bg-white rounded-lg shadow p-6">
