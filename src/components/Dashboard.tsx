@@ -1,27 +1,82 @@
 // src/components/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getSurveyCounts } from '../lib/supabase';
-import { ClipboardList, Users, ArrowRight, Lock } from 'lucide-react';
+import { getSurveyCounts, getSurveyResults } from '../lib/supabase';
+import { ClipboardList, Users, ArrowRight, Lock, TrendingUp, Clock, Calendar } from 'lucide-react';
 
 const Dashboard = () => {
   const [counts, setCounts] = useState({ rn: 0, cna: 0, total: 0 });
+  const [insights, setInsights] = useState({
+    avgTaskTime: 0,
+    weeklyResponses: 0,
+    shiftBreakdown: { days: 0, evenings: 0, nights: 0 }
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCounts();
+    fetchData();
   }, []);
 
-  const fetchCounts = async () => {
+  const fetchData = async () => {
     try {
-      const data = await getSurveyCounts();
-      setCounts(data);
+      const countsData = await getSurveyCounts();
+      setCounts(countsData);
+
+      // Fetch additional insights
+      const responses = await getSurveyResults({});
+      
+      // Calculate average task time across all responses
+      let totalTaskTime = 0;
+      let taskCount = 0;
+      
+      responses.forEach(response => {
+        if (response.responses) {
+          Object.values(response.responses).forEach((task: any) => {
+            if (task.minTime && task.maxTime) {
+              totalTaskTime += (parseFloat(task.minTime) + parseFloat(task.maxTime)) / 2;
+              taskCount++;
+            }
+          });
+        }
+      });
+
+      // Get weekly responses (last 7 days)
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weeklyResponses = responses.filter(r => 
+        new Date(r.submitted_at) > weekAgo
+      ).length;
+
+      // Get shift breakdown
+      const shiftBreakdown = responses.reduce((acc, r) => {
+        if (r.primary_shift) {
+          acc[r.primary_shift] = (acc[r.primary_shift] || 0) + 1;
+        }
+        return acc;
+      }, { days: 0, evenings: 0, nights: 0 });
+
+      setInsights({
+        avgTaskTime: taskCount > 0 ? Math.round(totalTaskTime / taskCount) : 0,
+        weeklyResponses,
+        shiftBreakdown
+      });
+
     } catch (error) {
-      console.error('Error fetching counts:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const getMilestoneProgress = () => {
+    const milestones = [10, 25, 50, 100, 200, 500];
+    const nextMilestone = milestones.find(m => m > counts.total) || 500;
+    const previousMilestone = milestones[milestones.indexOf(nextMilestone) - 1] || 0;
+    const progress = ((counts.total - previousMilestone) / (nextMilestone - previousMilestone)) * 100;
+    return { nextMilestone, progress: Math.min(progress, 100) };
+  };
+
+  const { nextMilestone, progress } = getMilestoneProgress();
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -36,7 +91,30 @@ const Dashboard = () => {
         </p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Milestone Progress Bar */}
+      {counts.total > 0 && (
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6 mb-8 border border-indigo-100">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-gray-900">
+              🎯 Community Milestone Progress
+            </h3>
+            <span className="text-sm font-medium text-indigo-600">
+              {counts.total} / {nextMilestone} responses
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+            <div 
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 h-4 rounded-full transition-all duration-500"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-600">
+            {nextMilestone - counts.total} more responses to reach our next milestone! 🚀
+          </p>
+        </div>
+      )}
+
+      {/* Stats Cards - Participation Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between">
@@ -44,6 +122,9 @@ const Dashboard = () => {
               <p className="text-sm text-gray-600">Total Responses</p>
               <p className="text-3xl font-bold mt-2">
                 {loading ? '...' : counts.total}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {counts.rn} RN • {counts.cna} CNA
               </p>
             </div>
             <Users className="h-12 w-12 text-indigo-600" />
@@ -53,24 +134,27 @@ const Dashboard = () => {
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">RN Surveys</p>
+              <p className="text-sm text-gray-600">This Week</p>
               <p className="text-3xl font-bold mt-2">
-                {loading ? '...' : counts.rn}
+                {loading ? '...' : insights.weeklyResponses}
               </p>
+              <p className="text-xs text-gray-500 mt-1">New responses</p>
             </div>
-            <ClipboardList className="h-12 w-12 text-blue-600" />
+            <Calendar className="h-12 w-12 text-emerald-600" />
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">CNA Surveys</p>
+              <p className="text-sm text-gray-600">Avg Task Time</p>
               <p className="text-3xl font-bold mt-2">
-                {loading ? '...' : counts.cna}
+                {loading ? '...' : insights.avgTaskTime}
+                <span className="text-lg text-gray-500 ml-1">min</span>
               </p>
+              <p className="text-xs text-gray-500 mt-1">Across all tasks</p>
             </div>
-            <ClipboardList className="h-12 w-12 text-emerald-600" />
+            <Clock className="h-12 w-12 text-blue-600" />
           </div>
         </div>
       </div>
@@ -106,41 +190,51 @@ const Dashboard = () => {
         </Link>
       </div>
 
-      {/* Simple Aggregated Insights */}
+      {/* Community Insights - Shift Breakdown */}
       {counts.total >= 5 && (
         <div className="bg-white rounded-lg shadow-lg p-8 mb-12">
-          <h2 className="text-2xl font-bold mb-4">Community Insights</h2>
-          <p className="text-gray-600 mb-6">
-            Here's what our community of {counts.total} healthcare professionals is telling us:
-          </p>
+          <div className="flex items-center gap-3 mb-6">
+            <TrendingUp className="h-6 w-6 text-indigo-600" />
+            <h2 className="text-2xl font-bold">Community Insights</h2>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-indigo-50 rounded-lg p-6">
-              <div className="text-4xl font-bold text-indigo-600 mb-2">
-                {counts.rn}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-3xl font-bold text-blue-600 mb-1">
+                {insights.shiftBreakdown.days}
               </div>
-              <p className="text-gray-700 font-medium">Registered Nurses</p>
-              <p className="text-sm text-gray-600 mt-2">
-                Sharing their experience with clinical tasks and patient care
+              <p className="text-sm text-gray-600">Day Shift</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {counts.total > 0 ? Math.round((insights.shiftBreakdown.days / counts.total) * 100) : 0}%
               </p>
             </div>
 
-            <div className="bg-emerald-50 rounded-lg p-6">
-              <div className="text-4xl font-bold text-emerald-600 mb-2">
-                {counts.cna}
+            <div className="text-center p-4 bg-orange-50 rounded-lg">
+              <div className="text-3xl font-bold text-orange-600 mb-1">
+                {insights.shiftBreakdown.evenings}
               </div>
-              <p className="text-gray-700 font-medium">Certified Nursing Assistants</p>
-              <p className="text-sm text-gray-600 mt-2">
-                Contributing valuable data on daily care activities
+              <p className="text-sm text-gray-600">Evening Shift</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {counts.total > 0 ? Math.round((insights.shiftBreakdown.evenings / counts.total) * 100) : 0}%
+              </p>
+            </div>
+
+            <div className="text-center p-4 bg-indigo-50 rounded-lg">
+              <div className="text-3xl font-bold text-indigo-600 mb-1">
+                {insights.shiftBreakdown.nights}
+              </div>
+              <p className="text-sm text-gray-600">Night Shift</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {counts.total > 0 ? Math.round((insights.shiftBreakdown.nights / counts.total) * 100) : 0}%
               </p>
             </div>
           </div>
 
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm text-blue-800">
-              <strong>💡 Your Impact:</strong> With {counts.total} responses, we can now run meaningful 
-              workload simulations to help optimize staffing ratios and improve working conditions. 
-              The more data we collect, the more accurate our recommendations become!
+              <strong>💡 Your Impact:</strong> With {counts.total} responses from across all shifts, 
+              we can now run meaningful workload simulations to help optimize staffing ratios and 
+              improve working conditions. The more data we collect, the more accurate our recommendations become!
             </p>
           </div>
         </div>
