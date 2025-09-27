@@ -267,3 +267,129 @@ function getDeviceType() {
   }
   return 'desktop';
 }
+
+// Add to src/lib/supabase.js - Data Quality Functions
+
+// Get data quality summary
+export async function getDataQualitySummary(daysBack = 7) {
+  const { data, error } = await supabase
+    .rpc('get_data_quality_summary', { days_back: daysBack });
+
+  if (error) throw error;
+  return data[0] || {
+    total_responses: 0,
+    high_quality_count: 0,
+    medium_quality_count: 0,
+    low_quality_count: 0,
+    flagged_count: 0,
+    avg_quality_score: 0,
+    outlier_percentage: 0,
+    suspicious_percentage: 0
+  };
+}
+
+// Get outlier details
+export async function getOutliers() {
+  const { data, error } = await supabase
+    .rpc('detect_outliers');
+
+  if (error) throw error;
+  return data;
+}
+
+// Get suspicious responses
+export async function getSuspiciousResponses() {
+  const { data, error } = await supabase
+    .rpc('detect_suspicious_responses');
+
+  if (error) throw error;
+  return data;
+}
+
+// Get flagged responses for review
+export async function getFlaggedResponses(limit = 50) {
+  const { data, error } = await supabase
+    .from('survey_responses')
+    .select('*')
+    .eq('flagged_for_review', true)
+    .order('submitted_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data;
+}
+
+// Update quality scores manually
+export async function updateQualityScores() {
+  const { data, error } = await supabase
+    .rpc('update_quality_scores');
+
+  if (error) throw error;
+  return data;
+}
+
+// Get quality metrics over time
+export async function getQualityMetricsHistory(days = 30) {
+  const { data, error } = await supabase
+    .from('data_quality_metrics')
+    .select('*')
+    .gte('metric_date', new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString())
+    .order('metric_date', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+// Get response details with quality info
+export async function getResponseWithQuality(responseId) {
+  const { data, error } = await supabase
+    .from('survey_responses')
+    .select('*')
+    .eq('id', responseId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Mark response as reviewed
+export async function markResponseReviewed(responseId, approved = true) {
+  const { data, error } = await supabase
+    .from('survey_responses')
+    .update({ 
+      flagged_for_review: !approved,
+      quality_score: approved ? 100 : 0
+    })
+    .eq('id', responseId)
+    .select();
+
+  if (error) throw error;
+  return data;
+}
+
+// Get quality distribution
+export async function getQualityDistribution() {
+  const { data, error } = await supabase
+    .from('survey_responses')
+    .select('quality_score, survey_type');
+
+  if (error) throw error;
+
+  // Group into quality tiers
+  const distribution = {
+    high: { rn: 0, cna: 0 },
+    medium: { rn: 0, cna: 0 },
+    low: { rn: 0, cna: 0 }
+  };
+
+  data.forEach(response => {
+    const score = response.quality_score || 0;
+    const type = response.survey_type;
+    
+    if (score >= 80) distribution.high[type]++;
+    else if (score >= 60) distribution.medium[type]++;
+    else distribution.low[type]++;
+  });
+
+  return distribution;
+}
