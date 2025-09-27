@@ -1,4 +1,4 @@
-// src/App.tsx
+// src/App.tsx - UPDATED with Analytics route
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Activity } from 'lucide-react';
@@ -7,6 +7,7 @@ import NurseSurvey from './components/NurseSurvey';
 import CNASurvey from './components/CNASurvey';
 import Results from './components/Results';
 import Simulation from './components/Simulation';
+import RealtimeAnalytics from './components/RealtimeAnalytics';
 
 const Header = () => {
   const location = useLocation();
@@ -42,6 +43,12 @@ const Header = () => {
               CNA Survey
             </Link>
             <Link 
+              to="/analytics" 
+              className={`text-sm font-medium ${isActive('/analytics') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+            >
+              Analytics
+            </Link>
+            <Link 
               to="/results" 
               className={`text-sm font-medium ${isActive('/results') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
             >
@@ -71,6 +78,7 @@ const App = () => {
             <Route path="/" element={<Dashboard />} />
             <Route path="/survey/nurse" element={<NurseSurvey />} />
             <Route path="/survey/cna" element={<CNASurvey />} />
+            <Route path="/analytics" element={<RealtimeAnalytics />} />
             <Route path="/results" element={<Results />} />
             <Route path="/simulation" element={<Simulation />} />
           </Routes>
