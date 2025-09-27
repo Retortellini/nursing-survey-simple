@@ -298,14 +298,37 @@ const Simulation = () => {
         <>
           <div className="bg-white rounded-lg shadow p-6 mb-8">
             <h2 className="text-lg font-semibold mb-4">Task Completion Rates by Staffing Ratio</h2>
-            <div className="h-96">
+            <div className="h-[500px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={getChartData()}>
+                <LineChart 
+                  data={getChartData()}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 80 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="cnaRatio" label={{ value: 'CNA Ratio', position: 'bottom' }} />
-                  <YAxis label={{ value: 'Completion Rate (%)', angle: -90, position: 'insideLeft' }} />
+                  <XAxis 
+                    dataKey="cnaRatio" 
+                    label={{ 
+                      value: 'CNA Ratio', 
+                      position: 'bottom',
+                      offset: 0,
+                      style: { textAnchor: 'middle' }
+                    }} 
+                    height={60}
+                  />
+                  <YAxis 
+                    label={{ 
+                      value: 'Completion Rate (%)', 
+                      angle: -90, 
+                      position: 'insideLeft',
+                      style: { textAnchor: 'middle' }
+                    }} 
+                  />
                   <Tooltip />
-                  <Legend />
+                  <Legend 
+                    verticalAlign="top" 
+                    height={40}
+                    wrapperStyle={{ paddingBottom: '20px' }}
+                  />
                   {params.nurseRatios.map((ratio, idx) => (
                     <Line
                       key={ratio}
