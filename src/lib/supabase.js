@@ -638,3 +638,141 @@ export async function saveSensitivityResults(baseScenarioId, parameterName, para
   if (error) throw error;
   return data[0];
 }
+
+// Add to src/lib/supabase.js - Visualization Functions
+
+// Get heat map data
+export async function getHeatmapData(groupBy = 'shift') {
+  const { data, error } = await supabase
+    .rpc('get_heatmap_data', { group_by_param: groupBy });
+
+  if (error) throw error;
+  return data;
+}
+
+// Get task flow data for Sankey diagram
+export async function getTaskFlowData() {
+  const { data, error } = await supabase
+    .rpc('get_task_flow_data');
+
+  if (error) throw error;
+  return data;
+}
+
+// Get network graph data
+export async function getTaskNetworkData() {
+  const { data, error } = await supabase
+    .rpc('get_task_network_data');
+
+  if (error) throw error;
+  
+  // Separate nodes and edges
+  const nodes = data.filter(d => d.node_id !== null).map(d => ({
+    id: d.node_id,
+    label: d.node_label,
+    size: d.node_size,
+    category: d.node_category
+  }));
+
+  const edges = data.filter(d => d.edge_source !== null).map(d => ({
+    source: d.edge_source,
+    target: d.edge_target,
+    weight: d.edge_weight
+  }));
+
+  return { nodes, edges };
+}
+
+// Get time distribution for a specific task
+export async function getTimeDistribution(taskName) {
+  const { data, error } = await supabase
+    .rpc('get_time_distribution', { task_name_param: taskName });
+
+  if (error) throw error;
+  return data;
+}
+
+// Get trend data
+export async function getTrendData(metricName = 'avg_completion_time') {
+  const { data, error } = await supabase
+    .rpc('get_trend_data', { metric_name: metricName });
+
+  if (error) throw error;
+  return data;
+}
+
+// Export dashboard data
+export async function exportDashboardData(exportType, filters = {}) {
+  const { data, error } = await supabase
+    .rpc('export_dashboard_data', { 
+      export_type: exportType,
+      filters: filters
+    });
+
+  if (error) throw error;
+  return data;
+}
+
+// Save dashboard preferences
+export async function saveDashboardPreferences(userSession, dashboardConfig, widgetLayout) {
+  const { data, error } = await supabase
+    .from('dashboard_preferences')
+    .upsert([{
+      user_session: userSession,
+      dashboard_config: dashboardConfig,
+      widget_layout: widgetLayout,
+      updated_at: new Date().toISOString()
+    }], { onConflict: 'user_session' })
+    .select();
+
+  if (error) throw error;
+  return data[0];
+}
+
+// Load dashboard preferences
+export async function loadDashboardPreferences(userSession) {
+  const { data, error } = await supabase
+    .from('dashboard_preferences')
+    .select('*')
+    .eq('user_session', userSession)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error; // Ignore "not found" error
+  return data;
+}
+
+// Export to CSV
+export function exportToCSV(data, filename) {
+  if (!data || data.length === 0) return;
+
+  const headers = Object.keys(data[0]);
+  const csvContent = [
+    headers.join(','),
+    ...data.map(row => 
+      headers.map(header => {
+        const value = row[header];
+        // Escape commas and quotes
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      }).join(',')
+    )
+  ].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();
+}
+
+// Export to JSON
+export function exportToJSON(data, filename) {
+  const jsonContent = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonContent], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}_${new Date().toISOString().split('T')[0]}.json`;
+  link.click();
+}
