@@ -1,4 +1,4 @@
-// src/App.tsx - UPDATED with Comparative Analytics route
+// src/App.tsx - UPDATED with Enhanced Simulation route
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Activity } from 'lucide-react';
@@ -7,6 +7,7 @@ import NurseSurvey from './components/NurseSurvey';
 import CNASurvey from './components/CNASurvey';
 import Results from './components/Results';
 import Simulation from './components/Simulation';
+import EnhancedSimulation from './components/EnhancedSimulation';
 import RealtimeAnalytics from './components/RealtimeAnalytics';
 import DataQuality from './components/DataQuality';
 import ComparativeAnalytics from './components/ComparativeAnalytics';
@@ -54,7 +55,7 @@ const Header = () => {
               to="/quality" 
               className={`text-sm font-medium ${isActive('/quality') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
             >
-              Data Quality
+              Quality
             </Link>
             <Link 
               to="/comparative" 
@@ -73,6 +74,12 @@ const Header = () => {
               className={`text-sm font-medium ${isActive('/simulation') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
             >
               Simulation
+            </Link>
+            <Link 
+              to="/enhanced-simulation" 
+              className={`text-sm font-medium ${isActive('/enhanced-simulation') ? 'text-indigo-600' : 'text-gray-700 hover:text-indigo-600'}`}
+            >
+              Enhanced
             </Link>
           </nav>
         </div>
@@ -97,6 +104,7 @@ const App = () => {
             <Route path="/comparative" element={<ComparativeAnalytics />} />
             <Route path="/results" element={<Results />} />
             <Route path="/simulation" element={<Simulation />} />
+            <Route path="/enhanced-simulation" element={<EnhancedSimulation />} />
           </Routes>
         </main>
         
