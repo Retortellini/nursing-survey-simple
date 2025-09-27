@@ -131,6 +131,63 @@ const Dashboard = () => {
         </Link>
       </div>
 
+      {/* Simple Aggregated Insights */}
+      {counts.total >= 5 && (
+        <div className="mt-12 bg-white rounded-lg shadow-lg p-8">
+          <h2 className="text-2xl font-bold mb-4">Community Insights</h2>
+          <p className="text-gray-600 mb-6">
+            Here's what our community of {counts.total} healthcare professionals is telling us:
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-indigo-50 rounded-lg p-6">
+              <div className="text-4xl font-bold text-indigo-600 mb-2">
+                {counts.rn}
+              </div>
+              <p className="text-gray-700 font-medium">Registered Nurses</p>
+              <p className="text-sm text-gray-600 mt-2">
+                Sharing their experience with clinical tasks and patient care
+              </p>
+            </div>
+
+            <div className="bg-emerald-50 rounded-lg p-6">
+              <div className="text-4xl font-bold text-emerald-600 mb-2">
+                {counts.cna}
+              </div>
+              <p className="text-gray-700 font-medium">Certified Nursing Assistants</p>
+              <p className="text-sm text-gray-600 mt-2">
+                Contributing valuable data on daily care activities
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-800">
+              <strong>💡 Your Impact:</strong> With {counts.total} responses, we can now run meaningful 
+              workload simulations to help optimize staffing ratios and improve working conditions. 
+              The more data we collect, the more accurate our recommendations become!
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Thank You Section */}
+      {counts.total > 0 && (
+        <div className="mt-12 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-8 text-center border border-indigo-100">
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">
+            Thank You to Our Contributors! 🎉
+          </h2>
+          <p className="text-xl text-gray-700 mb-4">
+            <strong>{counts.total} responses collected</strong> - Your input is making a real difference!
+          </p>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Every survey response helps us better understand nursing workload and develop more accurate 
+            staffing simulations. Your anonymous contributions are helping improve patient care and 
+            working conditions for healthcare teams.
+          </p>
+        </div>
+      )}
+
       {/* Info Section */}
       <div className="mt-12 bg-blue-50 rounded-lg p-8">
         <h2 className="text-2xl font-bold mb-4">How It Works</h2>
