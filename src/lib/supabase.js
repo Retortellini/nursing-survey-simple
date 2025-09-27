@@ -393,3 +393,101 @@ export async function getQualityDistribution() {
 
   return distribution;
 }
+
+// Add to src/lib/supabase.js - Comparative Analytics Functions
+
+// Compare data by shift
+export async function compareByShift(taskFilter = null) {
+  const { data, error } = await supabase
+    .rpc('compare_by_shift', { task_filter: taskFilter });
+
+  if (error) throw error;
+  return data;
+}
+
+// Compare data by experience level
+export async function compareByExperience(taskFilter = null) {
+  const { data, error } = await supabase
+    .rpc('compare_by_experience', { task_filter: taskFilter });
+
+  if (error) throw error;
+  return data;
+}
+
+// Compare data by unit type
+export async function compareByUnit(taskFilter = null) {
+  const { data, error } = await supabase
+    .rpc('compare_by_unit', { task_filter: taskFilter });
+
+  if (error) throw error;
+  return data;
+}
+
+// Compare RN vs CNA tasks
+export async function compareRnVsCna() {
+  const { data, error } = await supabase
+    .rpc('compare_rn_vs_cna');
+
+  if (error) throw error;
+  return data;
+}
+
+// Get percentile benchmarks
+export async function getPercentileBenchmarks(benchmarkType, benchmarkKey) {
+  const { data, error } = await supabase
+    .rpc('calculate_percentile_benchmarks', { 
+      benchmark_type_param: benchmarkType,
+      benchmark_key_param: benchmarkKey
+    });
+
+  if (error) throw error;
+  return data;
+}
+
+// Get performance ranking
+export async function getPerformanceRanking(compareType, compareValue) {
+  const { data, error } = await supabase
+    .rpc('get_performance_ranking', { 
+      compare_type: compareType,
+      compare_value: compareValue
+    });
+
+  if (error) throw error;
+  return data;
+}
+
+// Identify best practices
+export async function identifyBestPractices(taskName) {
+  const { data, error } = await supabase
+    .rpc('identify_best_practices', { task_name_param: taskName });
+
+  if (error) throw error;
+  return data;
+}
+
+// Calculate workload intensity
+export async function getWorkloadIntensity() {
+  const { data, error } = await supabase
+    .rpc('calculate_workload_intensity');
+
+  if (error) throw error;
+  return data;
+}
+
+// Get available comparison groups
+export async function getComparisonGroups() {
+  const { data: responses, error } = await supabase
+    .from('survey_responses')
+    .select('primary_shift, experience_level, unit_type, survey_type');
+
+  if (error) throw error;
+
+  const groups = {
+    shifts: [...new Set(responses.map(r => r.primary_shift).filter(Boolean))],
+    experiences: [...new Set(responses.map(r => r.experience_level).filter(Boolean))],
+    units: [...new Set(responses.map(r => r.unit_type).filter(Boolean))],
+    surveyTypes: [...new Set(responses.map(r => r.survey_type).filter(Boolean))]
+  };
+
+  return groups;
+}
