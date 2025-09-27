@@ -125,3 +125,145 @@ export async function getSurveyCounts() {
     total: data.length
   };
 }
+
+// Add to src/lib/supabase.js
+
+// Session tracking functions
+export async function createSurveySession(surveyType, totalSteps) {
+  const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  const { data, error } = await supabase
+    .from('survey_sessions')
+    .insert([{
+      session_id: sessionId,
+      survey_type: surveyType,
+      total_steps: totalSteps,
+      ip_hash: await hashString(getClientIP()),
+      user_agent: navigator.userAgent,
+      device_type: getDeviceType()
+    }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return sessionId;
+}
+
+export async function updateSurveySession(sessionId, currentStep, completed = false) {
+  const updateData = {
+    current_step: currentStep,
+    last_activity: new Date().toISOString(),
+    completed: completed
+  };
+
+  if (completed) {
+    updateData.completed_at = new Date().toISOString();
+  }
+
+  const { error } = await supabase
+    .from('survey_sessions')
+    .update(updateData)
+    .eq('session_id', sessionId);
+
+  if (error) throw error;
+}
+
+export async function trackSurveyStep(sessionId, stepNumber, stepName, completed = false) {
+  const { data: existingStep } = await supabase
+    .from('survey_step_tracking')
+    .select('id, entered_at')
+    .eq('session_id', sessionId)
+    .eq('step_number', stepNumber)
+    .single();
+
+  if (existingStep && completed) {
+    const enteredAt = new Date(existingStep.entered_at);
+    const exitedAt = new Date();
+    const timeSpent = Math.round((exitedAt - enteredAt) / 1000);
+
+    const { error } = await supabase
+      .from('survey_step_tracking')
+      .update({
+        exited_at: exitedAt.toISOString(),
+        time_spent_seconds: timeSpent,
+        completed: true
+      })
+      .eq('id', existingStep.id);
+
+    if (error) throw error;
+  } else if (!existingStep) {
+    const { error } = await supabase
+      .from('survey_step_tracking')
+      .insert([{
+        session_id: sessionId,
+        step_number: stepNumber,
+        step_name: stepName
+      }]);
+
+    if (error) throw error;
+  }
+}
+
+// Analytics retrieval functions
+export async function getActiveSessions() {
+  const { data, error } = await supabase
+    .rpc('get_active_sessions');
+
+  if (error) throw error;
+  
+  return data.reduce((acc, row) => {
+    acc[row.survey_type] = row.active_count;
+    return acc;
+  }, { rn: 0, cna: 0, total: data.reduce((sum, r) => sum + Number(r.active_count), 0) });
+}
+
+export async function getCompletionRates(daysBack = 7) {
+  const { data, error } = await supabase
+    .rpc('get_completion_rates', { days_back: daysBack });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getDropoffAnalysis(surveyType = null) {
+  const { data, error } = await supabase
+    .rpc('get_dropoff_analysis', { survey_type_filter: surveyType });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getResponseVelocity(hoursBack = 24) {
+  const { data, error } = await supabase
+    .rpc('get_response_velocity', { hours_back: hoursBack });
+
+  if (error) throw error;
+  
+  // Format for charting
+  const formatted = {};
+  data.forEach(row => {
+    const hour = new Date(row.time_bucket).toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: 'numeric' 
+    });
+    if (!formatted[hour]) {
+      formatted[hour] = { hour, rn: 0, cna: 0 };
+    }
+    formatted[hour][row.survey_type] = Number(row.response_count);
+  });
+
+  return Object.values(formatted).reverse();
+}
+
+// Helper function to detect device type
+function getDeviceType() {
+  const ua = navigator.userAgent;
+  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
+    return 'tablet';
+  }
+  if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) {
+    return 'mobile';
+  }
+  return 'desktop';
+}
