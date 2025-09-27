@@ -27,7 +27,7 @@ import {
   Palette,
   Download,
   TrendingUp,
-  Grid3x3,
+  Grid,
   Network,
   Activity,
   FileText
@@ -151,7 +151,7 @@ const AdvancedVisualizations = () => {
                 activeTab === 'heatmap' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-600'
               }`}
             >
-              <Grid3x3 className="inline h-4 w-4 mr-2" />
+              <Grid className="inline h-4 w-4 mr-2" />
               Heat Map
             </button>
             <button
