@@ -1,7 +1,7 @@
-// src/components/CNASurvey.tsx
-import React, { useState } from 'react';
+// src/components/CNASurvey.tsx - UPDATED with analytics tracking
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { submitSurvey } from '../lib/supabase';
+import { submitSurvey, createSurveySession, updateSurveySession, trackSurveyStep } from '../lib/supabase';
 import { CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 
 const CNASurvey = () => {
@@ -9,6 +9,7 @@ const CNASurvey = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
 
   const [respondentInfo, setRespondentInfo] = useState({
     primaryShift: '',
@@ -27,6 +28,11 @@ const CNASurvey = () => {
         {
           name: "Vital Signs",
           description: "Complete set of vital signs including documentation",
+          timeRange: "5-10"
+        },
+        {
+          name: "Blood Glucose Checks",
+          description: "Including preparation, check, and documentation",
           timeRange: "5-10"
         },
         {
@@ -67,16 +73,79 @@ const CNASurvey = () => {
       ]
     },
     {
-      title: "Room Management",
+      title: "Room & Equipment Management",
       tasks: [
         {
           name: "Room Turnover",
           description: "Preparing room for new patient",
           timeRange: "5-15"
+        },
+        {
+          name: "Supply Restocking",
+          description: "Maintaining room supplies",
+          timeRange: "5-15"
+        },
+        {
+          name: "Equipment Management",
+          description: "Cleaning and organizing equipment",
+          timeRange: "5-10"
+        },
+        {
+          name: "Patient Transport",
+          description: "Transporting patients to tests/procedures",
+          timeRange: "15-30"
         }
       ]
     }
   ];
+
+  // Initialize session on component mount
+  useEffect(() => {
+    const initSession = async () => {
+      try {
+        const totalSteps = taskSections.length + 1; // +1 for respondent info
+        const newSessionId = await createSurveySession('cna', totalSteps);
+        setSessionId(newSessionId);
+        
+        // Track initial step
+        await trackSurveyStep(newSessionId, 0, 'Respondent Information');
+      } catch (error) {
+        console.error('Error creating session:', error);
+      }
+    };
+
+    initSession();
+  }, []);
+
+  // Track step changes
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const trackStep = async () => {
+      try {
+        // Complete previous step
+        if (currentStep > 0) {
+          const prevStepName = currentStep === 1 
+            ? 'Respondent Information' 
+            : taskSections[currentStep - 2].title;
+          await trackSurveyStep(sessionId, currentStep - 1, prevStepName, true);
+        }
+
+        // Enter new step
+        const stepName = currentStep === 0 
+          ? 'Respondent Information' 
+          : taskSections[currentStep - 1].title;
+        await trackSurveyStep(sessionId, currentStep, stepName);
+
+        // Update session progress
+        await updateSurveySession(sessionId, currentStep);
+      } catch (error) {
+        console.error('Error tracking step:', error);
+      }
+    };
+
+    trackStep();
+  }, [currentStep, sessionId]);
 
   const handleTaskResponseChange = (taskName, field, value) => {
     setResponses(prev => ({
@@ -91,11 +160,23 @@ const CNASurvey = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      // Complete final step
+      if (sessionId) {
+        await trackSurveyStep(
+          sessionId, 
+          currentStep, 
+          taskSections[currentStep - 1].title, 
+          true
+        );
+        await updateSurveySession(sessionId, currentStep, true);
+      }
+
       await submitSurvey({
         surveyType: 'cna',
         respondentInfo,
         responses
       });
+      
       setSubmitted(true);
     } catch (error) {
       console.error('Error submitting survey:', error);
@@ -144,6 +225,9 @@ const CNASurvey = () => {
             style={{ width: `${(currentStep / (taskSections.length + 1)) * 100}%` }}
           />
         </div>
+        <p className="text-sm text-gray-600 mt-2">
+          Step {currentStep + 1} of {taskSections.length + 1}
+        </p>
       </div>
 
       <div className="bg-white rounded-lg shadow p-6">
