@@ -491,3 +491,150 @@ export async function getComparisonGroups() {
 
   return groups;
 }
+
+// Add to src/lib/supabase.js - Simulation Enhancement Functions
+
+// Calculate confidence intervals
+export async function getConfidenceIntervals(nurseRatio, cnaRatio, shiftHours, iterations = 1000, confidenceLevel = 0.95) {
+  const { data, error } = await supabase
+    .rpc('calculate_confidence_intervals', {
+      nurse_ratio_param: nurseRatio,
+      cna_ratio_param: cnaRatio,
+      shift_hours_param: shiftHours,
+      iterations_param: iterations,
+      confidence_level: confidenceLevel
+    });
+
+  if (error) throw error;
+  return data[0] || null;
+}
+
+// Run sensitivity analysis
+export async function runSensitivityAnalysis(baseNurseRatio, baseCnaRatio, parameterToVary, variationRange = [1,2,3,4,5,6]) {
+  const { data, error } = await supabase
+    .rpc('run_sensitivity_analysis', {
+      base_nurse_ratio: baseNurseRatio,
+      base_cna_ratio: baseCnaRatio,
+      parameter_to_vary: parameterToVary,
+      variation_range: variationRange
+    });
+
+  if (error) throw error;
+  return data;
+}
+
+// Calculate risk score
+export async function calculateRiskScore(completionRate, workloadVariance, staffRatio) {
+  const { data, error } = await supabase
+    .rpc('calculate_risk_score', {
+      completion_rate: completionRate,
+      workload_variance: workloadVariance,
+      staff_ratio: staffRatio
+    });
+
+  if (error) throw error;
+  return data;
+}
+
+// Calculate staffing costs
+export async function calculateStaffingCosts(
+  rnCount, 
+  cnaCount, 
+  hoursPerShift, 
+  rnHourlyRate = 45, 
+  cnaHourlyRate = 22,
+  overheadMultiplier = 1.3
+) {
+  const { data, error } = await supabase
+    .rpc('calculate_staffing_costs', {
+      rn_count: rnCount,
+      cna_count: cnaCount,
+      hours_per_shift: hoursPerShift,
+      rn_hourly_rate: rnHourlyRate,
+      cna_hourly_rate: cnaHourlyRate,
+      overhead_multiplier: overheadMultiplier
+    });
+
+  if (error) throw error;
+  return data[0] || null;
+}
+
+// Save scenario for comparison
+export async function saveScenario(scenarioGroupId, scenarioName, parameters, results, metrics) {
+  const { data, error } = await supabase
+    .from('simulation_scenarios')
+    .insert([{
+      scenario_group_id: scenarioGroupId,
+      scenario_name: scenarioName,
+      parameters: parameters,
+      results: results,
+      metrics: metrics
+    }])
+    .select();
+
+  if (error) throw error;
+  return data[0];
+}
+
+// Compare scenarios
+export async function compareScenarios(scenarioGroupId) {
+  const { data, error } = await supabase
+    .rpc('compare_scenarios', {
+      scenario_group_id_param: scenarioGroupId
+    });
+
+  if (error) throw error;
+  return data;
+}
+
+// Calculate what-if impact
+export async function calculateWhatIfImpact(
+  currentNurseRatio,
+  currentCnaRatio,
+  proposedNurseRatio,
+  proposedCnaRatio,
+  patientVolume = 30
+) {
+  const { data, error } = await supabase
+    .rpc('calculate_what_if_impact', {
+      current_nurse_ratio: currentNurseRatio,
+      current_cna_ratio: currentCnaRatio,
+      proposed_nurse_ratio: proposedNurseRatio,
+      proposed_cna_ratio: proposedCnaRatio,
+      patient_volume: patientVolume
+    });
+
+  if (error) throw error;
+  return data;
+}
+
+// Get optimal staffing recommendation
+export async function getOptimalStaffing(minCompletionRate = 90, maxBudget = 10000, patientCount = 30) {
+  const { data, error } = await supabase
+    .rpc('get_optimal_staffing', {
+      min_completion_rate: minCompletionRate,
+      max_budget: maxBudget,
+      patient_count: patientCount
+    });
+
+  if (error) throw error;
+  return data;
+}
+
+// Save sensitivity analysis results
+export async function saveSensitivityResults(baseScenarioId, parameterName, parameterValue, completionRate, workloadScore, costImpact) {
+  const { data, error } = await supabase
+    .from('sensitivity_analysis')
+    .insert([{
+      base_scenario_id: baseScenarioId,
+      parameter_name: parameterName,
+      parameter_value: parameterValue,
+      completion_rate: completionRate,
+      workload_score: workloadScore,
+      cost_impact: costImpact
+    }])
+    .select();
+
+  if (error) throw error;
+  return data[0];
+}
