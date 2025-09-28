@@ -1,7 +1,7 @@
-// src/components/NurseSurvey.tsx - UPDATED with analytics tracking
-import React, { useState, useEffect } from 'react';
+// src/components/NurseSurvey.tsx
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { submitSurvey, createSurveySession, updateSurveySession, trackSurveyStep } from '../lib/supabase';
+import { submitSurvey } from '../lib/supabase';
 import { CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 
 const NurseSurvey = () => {
@@ -9,13 +9,13 @@ const NurseSurvey = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
 
   const [respondentInfo, setRespondentInfo] = useState({
     primaryShift: '',
     rotateShifts: false,
     experienceLevel: '',
-    unitType: ''
+    unitType: '',
+    typicalPatientLoad: 0
   });
 
   const [responses, setResponses] = useState({});
@@ -43,6 +43,11 @@ const NurseSurvey = () => {
           name: "Chart Review",
           description: "Review of patient charts and orders",
           timeRange: "10-15"
+        },
+        {
+          name: "I/O's",
+          description: "Intake and output monitoring and documentation",
+          timeRange: "5-10"
         }
       ]
     },
@@ -68,11 +73,16 @@ const NurseSurvey = () => {
           name: "Blood Administration",
           description: "Administration and monitoring of blood products",
           timeRange: "30-60"
+        },
+        {
+          name: "Turns",
+          description: "Turning and repositioning patients",
+          timeRange: "5-15"
         }
       ]
     },
     {
-      title: "Patient Care & Education",
+      title: "Patient Care & Mobility",
       tasks: [
         {
           name: "Patient Education",
@@ -88,58 +98,45 @@ const NurseSurvey = () => {
           name: "Family Communication",
           description: "Updates and discussions with family",
           timeRange: "10-25"
+        },
+        {
+          name: "Tooth Brushing",
+          description: "Oral care and tooth brushing assistance",
+          timeRange: "5-15"
+        },
+        {
+          name: "Ambulation",
+          description: "Assisting patients with walking and mobility",
+          timeRange: "10-20"
+        },
+        {
+          name: "Out Of Bed For Meals",
+          description: "Getting patients up and positioned for meals",
+          timeRange: "10-20"
+        }
+      ]
+    },
+    {
+      title: "Emergency & Coordination",
+      tasks: [
+        {
+          name: "Code Blue",
+          description: "Response to cardiac arrest emergencies",
+          timeRange: "30-60"
+        },
+        {
+          name: "Rapid Response",
+          description: "Response to rapid response team calls",
+          timeRange: "15-45"
+        },
+        {
+          name: "M.D. Rounds",
+          description: "Participation in physician rounds and communication",
+          timeRange: "15-30"
         }
       ]
     }
   ];
-
-  // Initialize session on component mount
-  useEffect(() => {
-    const initSession = async () => {
-      try {
-        const totalSteps = taskSections.length + 1; // +1 for respondent info
-        const newSessionId = await createSurveySession('rn', totalSteps);
-        setSessionId(newSessionId);
-        
-        // Track initial step
-        await trackSurveyStep(newSessionId, 0, 'Respondent Information');
-      } catch (error) {
-        console.error('Error creating session:', error);
-      }
-    };
-
-    initSession();
-  }, []);
-
-  // Track step changes
-  useEffect(() => {
-    if (!sessionId) return;
-
-    const trackStep = async () => {
-      try {
-        // Complete previous step
-        if (currentStep > 0) {
-          const prevStepName = currentStep === 1 
-            ? 'Respondent Information' 
-            : taskSections[currentStep - 2].title;
-          await trackSurveyStep(sessionId, currentStep - 1, prevStepName, true);
-        }
-
-        // Enter new step
-        const stepName = currentStep === 0 
-          ? 'Respondent Information' 
-          : taskSections[currentStep - 1].title;
-        await trackSurveyStep(sessionId, currentStep, stepName);
-
-        // Update session progress
-        await updateSurveySession(sessionId, currentStep);
-      } catch (error) {
-        console.error('Error tracking step:', error);
-      }
-    };
-
-    trackStep();
-  }, [currentStep, sessionId]);
 
   const handleTaskResponseChange = (taskName, field, value) => {
     setResponses(prev => ({
@@ -154,23 +151,11 @@ const NurseSurvey = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // Complete final step
-      if (sessionId) {
-        await trackSurveyStep(
-          sessionId, 
-          currentStep, 
-          taskSections[currentStep - 1].title, 
-          true
-        );
-        await updateSurveySession(sessionId, currentStep, true);
-      }
-
       await submitSurvey({
         surveyType: 'rn',
         respondentInfo,
         responses
       });
-      
       setSubmitted(true);
     } catch (error) {
       console.error('Error submitting survey:', error);
@@ -182,7 +167,7 @@ const NurseSurvey = () => {
 
   const canProceed = () => {
     if (currentStep === 0) {
-      return respondentInfo.primaryShift && respondentInfo.experienceLevel;
+      return respondentInfo.primaryShift && respondentInfo.experienceLevel && respondentInfo.typicalPatientLoad > 0;
     }
     
     const section = taskSections[currentStep - 1];
@@ -219,9 +204,6 @@ const NurseSurvey = () => {
             style={{ width: `${(currentStep / (taskSections.length + 1)) * 100}%` }}
           />
         </div>
-        <p className="text-sm text-gray-600 mt-2">
-          Step {currentStep + 1} of {taskSections.length + 1}
-        </p>
       </div>
 
       <div className="bg-white rounded-lg shadow p-6">
@@ -229,6 +211,24 @@ const NurseSurvey = () => {
           <div className="space-y-6">
             <h2 className="text-2xl font-bold">Nurse Task Time Survey</h2>
             
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Typical Patient Assignment <span className="text-red-500">*</span>
+              </label>
+              <select
+                className="w-full p-3 border rounded-lg"
+                value={respondentInfo.typicalPatientLoad}
+                onChange={(e) => setRespondentInfo({...respondentInfo, typicalPatientLoad: parseInt(e.target.value)})}
+              >
+                <option value="0">Select typical patient load...</option>
+                <option value="2">2 patients</option>
+                <option value="3">3 patients</option>
+                <option value="4">4 patients</option>
+                <option value="5">5 patients</option>
+                <option value="6">6 patients</option>
+              </select>
+            </div>
+
             <div>
               <label className="block text-sm font-medium mb-2">
                 Primary Shift <span className="text-red-500">*</span>
