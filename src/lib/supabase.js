@@ -412,12 +412,137 @@ export async function getFlaggedResponses(limit = 50) {
 }
 
 // Update quality scores manually
-export async function updateQualityScores() {
-  const { data, error } = await supabase
-    .rpc('update_quality_scores');
+// Updated updateQualityScores function in src/lib/supabase.js
+// Replace the existing updateQualityScores function with this implementation
 
-  if (error) throw error;
-  return data;
+export async function updateQualityScores() {
+  try {
+    // Since we don't have the RPC function, let's implement the logic here
+    // Get all survey responses
+    const { data: responses, error: fetchError } = await supabase
+      .from('survey_responses')
+      .select('*');
+
+    if (fetchError) throw fetchError;
+
+    // Calculate quality scores for each response
+    const updates = [];
+    
+    for (const response of responses) {
+      let qualityScore = 100; // Start with perfect score
+      let validationWarnings = [];
+      let outlierFlags = [];
+
+      // Check if response has proper data
+      if (!response.responses || Object.keys(response.responses).length === 0) {
+        qualityScore -= 30;
+        validationWarnings.push({ message: "No task responses provided" });
+      }
+
+      // Check for suspicious patterns
+      if (response.responses) {
+        const taskTimes = [];
+        const frequencies = [];
+        
+        Object.entries(response.responses).forEach(([taskName, taskData]) => {
+          if (taskData.minTime && taskData.maxTime) {
+            const minTime = parseFloat(taskData.minTime);
+            const maxTime = parseFloat(taskData.maxTime);
+            
+            // Check for unrealistic time ranges
+            if (minTime >= maxTime) {
+              qualityScore -= 10;
+              outlierFlags.push({ task: taskName, issue: "Invalid time range" });
+            }
+            
+            // Check for extremely short times
+            if (minTime < 1 || maxTime < 1) {
+              qualityScore -= 5;
+              outlierFlags.push({ task: taskName, issue: "Unrealistically short time" });
+            }
+            
+            // Check for extremely long times
+            if (maxTime > 120) { // More than 2 hours
+              qualityScore -= 5;
+              outlierFlags.push({ task: taskName, issue: "Unusually long time" });
+            }
+            
+            taskTimes.push(minTime, maxTime);
+          }
+          
+          if (taskData.frequency) {
+            frequencies.push(parseFloat(taskData.frequency));
+          }
+        });
+
+        // Check for suspicious patterns (all same times, etc.)
+        const uniqueTimes = [...new Set(taskTimes)];
+        if (uniqueTimes.length < 3 && taskTimes.length > 5) {
+          qualityScore -= 15;
+          validationWarnings.push({ message: "Suspicious time patterns detected" });
+        }
+
+        // Check response completeness
+        const taskCount = Object.keys(response.responses).length;
+        const expectedTaskCount = response.survey_type === 'rn' ? 15 : 8; // Approximate
+        
+        if (taskCount < expectedTaskCount * 0.5) {
+          qualityScore -= 20;
+          validationWarnings.push({ message: "Incomplete survey responses" });
+        }
+      }
+
+      // Ensure score is between 0 and 100
+      qualityScore = Math.max(0, Math.min(100, qualityScore));
+
+      // Determine if should be flagged for review
+      const shouldFlag = qualityScore < 70 || outlierFlags.length > 2;
+
+      updates.push({
+        id: response.id,
+        quality_score: qualityScore,
+        validation_warnings: validationWarnings.length > 0 ? validationWarnings : null,
+        outlier_flags: outlierFlags.length > 0 ? outlierFlags : null,
+        flagged_for_review: shouldFlag
+      });
+    }
+
+    // Update responses in batches
+    const batchSize = 50;
+    let updateCount = 0;
+    
+    for (let i = 0; i < updates.length; i += batchSize) {
+      const batch = updates.slice(i, i + batchSize);
+      
+      for (const update of batch) {
+        const { error: updateError } = await supabase
+          .from('survey_responses')
+          .update({
+            quality_score: update.quality_score,
+            validation_warnings: update.validation_warnings,
+            outlier_flags: update.outlier_flags,
+            flagged_for_review: update.flagged_for_review
+          })
+          .eq('id', update.id);
+
+        if (updateError) {
+          console.error('Error updating response:', update.id, updateError);
+        } else {
+          updateCount++;
+        }
+      }
+    }
+
+    return { 
+      success: true, 
+      message: `Updated quality scores for ${updateCount} responses`,
+      updated_count: updateCount 
+    };
+
+  } catch (error) {
+    console.error('Error in updateQualityScores:', error);
+    throw new Error(`Failed to update quality scores: ${error.message}`);
+  }
 }
 
 // Get quality metrics over time
