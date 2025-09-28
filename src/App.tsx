@@ -14,6 +14,8 @@ import RealtimeAnalytics from './components/RealtimeAnalytics';
 import DataQuality from './components/DataQuality';
 import ComparativeAnalytics from './components/ComparativeAnalytics';
 import AdvancedVisualizations from './components/AdvancedVisualizations';
+import Contact from "./Contact"; 
+
 
 const Header = () => {
   const location = useLocation();
@@ -191,6 +193,7 @@ const App = () => {
             <Route path="/" element={<Dashboard />} />
             <Route path="/survey/nurse" element={<NurseSurvey />} />
             <Route path="/survey/cna" element={<CNASurvey />} />
+            <Route path="/contact" element={<Contact />} />
             
             {/* ANALYTICS ROUTES - Analytics password required */}
             <Route path="/analytics" element={
