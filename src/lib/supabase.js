@@ -362,42 +362,6 @@ function getDeviceType() {
 
 // Add to src/lib/supabase.js - Data Quality Functions
 
-// Get data quality summary
-export async function getDataQualitySummary(daysBack = 7) {
-  const { data, error } = await supabase
-    .rpc('get_data_quality_summary', { days_back: daysBack });
-
-  if (error) throw error;
-  return data[0] || {
-    total_responses: 0,
-    high_quality_count: 0,
-    medium_quality_count: 0,
-    low_quality_count: 0,
-    flagged_count: 0,
-    avg_quality_score: 0,
-    outlier_percentage: 0,
-    suspicious_percentage: 0
-  };
-}
-
-// Get outlier details
-export async function getOutliers() {
-  const { data, error } = await supabase
-    .rpc('detect_outliers');
-
-  if (error) throw error;
-  return data;
-}
-
-// Get suspicious responses
-export async function getSuspiciousResponses() {
-  const { data, error } = await supabase
-    .rpc('detect_suspicious_responses');
-
-  if (error) throw error;
-  return data;
-}
-
 // Get flagged responses for review
 export async function getFlaggedResponses(limit = 50) {
   const { data, error } = await supabase
