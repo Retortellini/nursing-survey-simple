@@ -68,11 +68,103 @@ export async function getTaskStatistics(surveyType = null) {
 }
 
 // Helper function to save simulation results
+
+
 export async function saveSimulationResults(simulationData) {
+  // Calculate aggregate metrics from results array
+  let aggregateData = {};
+  
+  if (simulationData.results && Array.isArray(simulationData.results)) {
+    const results = simulationData.results;
+    
+    // Calculate averages
+    const avgCost = results.reduce((sum, r) => sum + (r.totalCost || 0), 0) / results.length;
+    const avgRisk = results.reduce((sum, r) => sum + (r.riskScore || 0), 0) / results.length;
+    const avgFailure = results.reduce((sum, r) => sum + (r.failureProbability || 0), 0) / results.length;
+    
+    // Extract confidence intervals (using first scenario as example)
+    const firstResult = results[0];
+    const confidenceLower = {};
+    const confidenceUpper = {};
+    
+    results.forEach(r => {
+      const key = `${r.nurseRatio}_${r.cnaRatio}`;
+      confidenceLower[key] = r.confidenceLower || r.completionRate;
+      confidenceUpper[key] = r.confidenceUpper || r.completionRate;
+    });
+    
+    aggregateData = {
+      total_cost: Math.round(avgCost),
+      risk_score: Math.round(avgRisk * 100) / 100,
+      failure_probability: Math.round(avgFailure * 100) / 100,
+      confidence_interval_lower: confidenceLower,
+      confidence_interval_upper: confidenceUpper,
+      cost_per_hour: simulationData.hourly_rate || 
+        ((simulationData.rn_hourly_rate || 45) + (simulationData.cna_hourly_rate || 22)) / 2
+    };
+  }
+
+  // Create scenario name based on parameters
+  const scenarioName = simulationData.scenario_name || 
+    `Enhanced Sim: RN[${(simulationData.nurse_ratios || []).join(',')}] CNA[${(simulationData.cna_ratios || []).join(',')}]`;
+
+  const dataToInsert = {
+    cna_ratios: simulationData.cna_ratios,
+    nurse_ratios: simulationData.nurse_ratios,
+    shift_hours: simulationData.shift_hours,
+    iterations: simulationData.iterations,
+    results: simulationData.results,
+    scenario_name: scenarioName,
+    notes: simulationData.enhanced_features ? 
+      `Enhanced simulation with: ${Object.keys(simulationData.enhanced_features).join(', ')}` : 
+      null,
+    sensitivity_params: simulationData.enhanced_features || null,
+    ...aggregateData
+  };
+
   const { data, error } = await supabase
     .from('simulation_results')
-    .insert([simulationData])
+    .insert([dataToInsert])
     .select();
+
+  if (error) throw error;
+  return data;
+}
+
+// Get enhanced simulation history using existing columns
+export async function getEnhancedSimulationHistory(limit = 10) {
+  const { data, error } = await supabase
+    .from('simulation_results')
+    .select('*')
+    .not('sensitivity_params', 'is', null) // Enhanced simulations have this field
+    .order('run_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data;
+}
+
+// Get simulations within budget and risk constraints using existing columns
+export async function getOptimalSimulations(maxCost = 10000, maxRisk = 30) {
+  const { data, error } = await supabase
+    .from('simulation_results')
+    .select('*')
+    .lte('total_cost', maxCost)
+    .lte('risk_score', maxRisk)
+    .order('risk_score', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+// Get cost and risk trends over time
+export async function getCostRiskTrends(daysBack = 30) {
+  const { data, error } = await supabase
+    .from('simulation_results')
+    .select('run_at, total_cost, risk_score, failure_probability, nurse_ratios, cna_ratios, scenario_name')
+    .gte('run_at', new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString())
+    .not('total_cost', 'is', null)
+    .order('run_at', { ascending: true });
 
   if (error) throw error;
   return data;
