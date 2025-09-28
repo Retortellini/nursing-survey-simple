@@ -1022,24 +1022,24 @@ export async function callRPCWithFallback(functionName, params, fallbackFunction
   }
 }
 
-// Add these fallback implementations to src/lib/supabase.js
 // These provide basic functionality when the RPC functions don't exist
+// Enhanced fallback implementations in src/lib/supabase.js
 
-// Fallback for getDataQualitySummary
+// Enhanced fallback for getDataQualitySummary
 export async function getDataQualitySummary(daysBack = 7) {
   try {
     // Try the RPC first
     const { data, error } = await supabase
       .rpc('get_data_quality_summary', { days_back: daysBack });
     
-    if (!error && data) {
-      return data[0] || createEmptyQualitySummary();
+    if (!error && data && data.length > 0) {
+      return data[0];
     }
   } catch (rpcError) {
     console.log('RPC function not available, using fallback implementation');
   }
 
-  // Fallback implementation
+  // Enhanced fallback implementation
   try {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysBack);
@@ -1079,9 +1079,9 @@ export async function getDataQualitySummary(daysBack = 7) {
       medium_quality_count: mediumQuality,
       low_quality_count: lowQuality,
       flagged_count: flagged,
-      avg_quality_score: totalResponses > 0 ? totalQualityScore / totalResponses : 0,
-      outlier_percentage: totalResponses > 0 ? (outliers / totalResponses) * 100 : 0,
-      suspicious_percentage: totalResponses > 0 ? (suspicious / totalResponses) * 100 : 0
+      avg_quality_score: totalResponses > 0 ? Math.round(totalQualityScore / totalResponses) : 0,
+      outlier_percentage: totalResponses > 0 ? Math.round((outliers / totalResponses) * 100) : 0,
+      suspicious_percentage: totalResponses > 0 ? Math.round((suspicious / totalResponses) * 100) : 0
     };
 
   } catch (fallbackError) {
@@ -1090,7 +1090,7 @@ export async function getDataQualitySummary(daysBack = 7) {
   }
 }
 
-// Fallback for getOutliers
+// Enhanced fallback for getOutliers
 export async function getOutliers() {
   try {
     // Try RPC first
@@ -1100,7 +1100,7 @@ export async function getOutliers() {
     console.log('Using fallback outlier detection');
   }
 
-  // Fallback: find responses with outlier flags
+  // Enhanced fallback: extract outliers from response data
   try {
     const { data: responses, error } = await supabase
       .from('survey_responses')
@@ -1111,28 +1111,46 @@ export async function getOutliers() {
 
     const outliers = [];
     responses.forEach(response => {
-      if (response.outlier_flags) {
+      if (response.outlier_flags && Array.isArray(response.outlier_flags)) {
         response.outlier_flags.forEach(flag => {
+          // Extract time value from the flag if available
+          let reportedTime = 0;
+          if (flag.values && typeof flag.values === 'string') {
+            const timeMatch = flag.values.match(/(\d+(?:\.\d+)?)\s*(?:minutes?|min)/i);
+            if (timeMatch) {
+              reportedTime = parseFloat(timeMatch[1]);
+            }
+          }
+
           outliers.push({
-            task_name: flag.task,
-            reported_time: 0, // Would need to extract from responses
-            avg_time: 0,
-            std_dev: 0,
-            z_score: 0,
-            issue: flag.issue || 'Unknown'
+            task_name: flag.task || 'Unknown Task',
+            reported_time: reportedTime,
+            avg_time: 0, // Would need statistical calculation
+            std_dev: 0,  // Would need statistical calculation
+            z_score: flag.values && flag.values.includes('Z-score:') ? 
+              parseFloat(flag.values.match(/Z-score:\s*(\d+(?:\.\d+)?)/)?.[1] || 0) : 0,
+            issue: flag.issue || 'Unknown',
+            severity: flag.severity || 'medium',
+            response_id: response.id
           });
         });
       }
     });
 
-    return outliers;
+    // Sort by severity and reported time
+    return outliers.sort((a, b) => {
+      if (a.severity === 'critical' && b.severity !== 'critical') return -1;
+      if (b.severity === 'critical' && a.severity !== 'critical') return 1;
+      return b.reported_time - a.reported_time;
+    });
+
   } catch (error) {
     console.error('Fallback outlier detection failed:', error);
     return [];
   }
 }
 
-// Fallback for getSuspiciousResponses
+// Enhanced fallback for getSuspiciousResponses  
 export async function getSuspiciousResponses() {
   try {
     // Try RPC first
@@ -1142,24 +1160,45 @@ export async function getSuspiciousResponses() {
     console.log('Using fallback suspicious response detection');
   }
 
-  // Fallback: find responses with validation warnings
+  // Enhanced fallback: find responses with validation warnings
   try {
     const { data: responses, error } = await supabase
       .from('survey_responses')
       .select('*')
-      .not('validation_warnings', 'is', null)
+      .or('validation_warnings.not.is.null,flagged_for_review.eq.true')
       .limit(50);
 
     if (error) throw error;
 
-    return responses.map(response => ({
-      response_id: response.id,
-      suspicion_type: 'validation_warning',
-      confidence: response.quality_score < 50 ? 0.8 : 0.6,
-      details: response.validation_warnings 
-        ? response.validation_warnings.map(w => w.message).join(', ')
-        : 'Quality concerns detected'
-    }));
+    return responses.map(response => {
+      let suspicionType = 'general_quality_concern';
+      let confidence = 0.5;
+      let details = 'Quality concerns detected';
+
+      if (response.validation_warnings && Array.isArray(response.validation_warnings)) {
+        suspicionType = 'validation_warning';
+        confidence = response.quality_score < 50 ? 0.9 : 0.7;
+        details = response.validation_warnings.map(w => w.message).join('; ');
+      }
+
+      if (response.outlier_flags && response.outlier_flags.length > 0) {
+        const criticalOutliers = response.outlier_flags.filter(f => f.severity === 'critical');
+        if (criticalOutliers.length > 0) {
+          suspicionType = 'extreme_outlier_pattern';
+          confidence = 0.95;
+          details = `Critical outliers detected: ${criticalOutliers.map(f => f.task).join(', ')}`;
+        }
+      }
+
+      return {
+        response_id: response.id,
+        suspicion_type: suspicionType,
+        confidence: confidence,
+        details: details,
+        quality_score: response.quality_score || 0,
+        submitted_at: response.submitted_at
+      };
+    }).sort((a, b) => b.confidence - a.confidence);
 
   } catch (error) {
     console.error('Fallback suspicious detection failed:', error);
