@@ -196,17 +196,23 @@ const EnhancedSimulation = () => {
 
       setSimulationResults(results);
 
-      // Save to database
+      // Save to database using existing schema
       await saveSimulationResults({
         cna_ratios: params.cnaRatios,
         nurse_ratios: params.nurseRatios,
         shift_hours: params.shiftHours,
         iterations: params.iterations,
         results: results,
+        rn_hourly_rate: params.rnHourlyRate,
+        cna_hourly_rate: params.cnaHourlyRate,
+        scenario_name: `Enhanced Simulation - ${new Date().toLocaleDateString()}`,
         enhanced_features: {
           confidence_intervals: true,
           cost_analysis: true,
-          risk_assessment: true
+          risk_assessment: true,
+          confidence_level: params.confidenceLevel,
+          cost_calculation_method: "hourly_rates_with_overhead",
+          risk_calculation_method: "completion_rate_based"
         }
       });
 
