@@ -1057,3 +1057,162 @@ export async function callRPCWithFallback(functionName, params, fallbackFunction
     return await fallbackFunction();
   }
 }
+
+// Add these fallback implementations to src/lib/supabase.js
+// These provide basic functionality when the RPC functions don't exist
+
+// Fallback for getDataQualitySummary
+export async function getDataQualitySummary(daysBack = 7) {
+  try {
+    // Try the RPC first
+    const { data, error } = await supabase
+      .rpc('get_data_quality_summary', { days_back: daysBack });
+    
+    if (!error && data) {
+      return data[0] || createEmptyQualitySummary();
+    }
+  } catch (rpcError) {
+    console.log('RPC function not available, using fallback implementation');
+  }
+
+  // Fallback implementation
+  try {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+    const { data: responses, error } = await supabase
+      .from('survey_responses')
+      .select('*')
+      .gte('submitted_at', cutoffDate.toISOString());
+
+    if (error) throw error;
+
+    const totalResponses = responses.length;
+    let highQuality = 0;
+    let mediumQuality = 0;
+    let lowQuality = 0;
+    let flagged = 0;
+    let totalQualityScore = 0;
+    let outliers = 0;
+    let suspicious = 0;
+
+    responses.forEach(response => {
+      const score = response.quality_score || 0;
+      totalQualityScore += score;
+
+      if (score >= 80) highQuality++;
+      else if (score >= 60) mediumQuality++;
+      else lowQuality++;
+
+      if (response.flagged_for_review) flagged++;
+      if (response.outlier_flags && response.outlier_flags.length > 0) outliers++;
+      if (response.validation_warnings && response.validation_warnings.length > 0) suspicious++;
+    });
+
+    return {
+      total_responses: totalResponses,
+      high_quality_count: highQuality,
+      medium_quality_count: mediumQuality,
+      low_quality_count: lowQuality,
+      flagged_count: flagged,
+      avg_quality_score: totalResponses > 0 ? totalQualityScore / totalResponses : 0,
+      outlier_percentage: totalResponses > 0 ? (outliers / totalResponses) * 100 : 0,
+      suspicious_percentage: totalResponses > 0 ? (suspicious / totalResponses) * 100 : 0
+    };
+
+  } catch (fallbackError) {
+    console.error('Fallback implementation failed:', fallbackError);
+    return createEmptyQualitySummary();
+  }
+}
+
+// Fallback for getOutliers
+export async function getOutliers() {
+  try {
+    // Try RPC first
+    const { data, error } = await supabase.rpc('detect_outliers');
+    if (!error && data) return data;
+  } catch (rpcError) {
+    console.log('Using fallback outlier detection');
+  }
+
+  // Fallback: find responses with outlier flags
+  try {
+    const { data: responses, error } = await supabase
+      .from('survey_responses')
+      .select('*')
+      .not('outlier_flags', 'is', null);
+
+    if (error) throw error;
+
+    const outliers = [];
+    responses.forEach(response => {
+      if (response.outlier_flags) {
+        response.outlier_flags.forEach(flag => {
+          outliers.push({
+            task_name: flag.task,
+            reported_time: 0, // Would need to extract from responses
+            avg_time: 0,
+            std_dev: 0,
+            z_score: 0,
+            issue: flag.issue || 'Unknown'
+          });
+        });
+      }
+    });
+
+    return outliers;
+  } catch (error) {
+    console.error('Fallback outlier detection failed:', error);
+    return [];
+  }
+}
+
+// Fallback for getSuspiciousResponses
+export async function getSuspiciousResponses() {
+  try {
+    // Try RPC first
+    const { data, error } = await supabase.rpc('detect_suspicious_responses');
+    if (!error && data) return data;
+  } catch (rpcError) {
+    console.log('Using fallback suspicious response detection');
+  }
+
+  // Fallback: find responses with validation warnings
+  try {
+    const { data: responses, error } = await supabase
+      .from('survey_responses')
+      .select('*')
+      .not('validation_warnings', 'is', null)
+      .limit(50);
+
+    if (error) throw error;
+
+    return responses.map(response => ({
+      response_id: response.id,
+      suspicion_type: 'validation_warning',
+      confidence: response.quality_score < 50 ? 0.8 : 0.6,
+      details: response.validation_warnings 
+        ? response.validation_warnings.map(w => w.message).join(', ')
+        : 'Quality concerns detected'
+    }));
+
+  } catch (error) {
+    console.error('Fallback suspicious detection failed:', error);
+    return [];
+  }
+}
+
+// Helper function to create empty quality summary
+function createEmptyQualitySummary() {
+  return {
+    total_responses: 0,
+    high_quality_count: 0,
+    medium_quality_count: 0,
+    low_quality_count: 0,
+    flagged_count: 0,
+    avg_quality_score: 0,
+    outlier_percentage: 0,
+    suspicious_percentage: 0
+  };
+}
