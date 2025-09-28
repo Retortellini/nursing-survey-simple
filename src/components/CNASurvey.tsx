@@ -117,23 +117,68 @@ const CNASurvey = () => {
     });
   };
 
-  if (submitted) {
-    return (
-      <div className="max-w-2xl mx-auto p-6 text-center">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle className="h-10 w-10 text-green-600" />
-        </div>
-        <h2 className="text-2xl font-bold mb-4">Thank You!</h2>
-        <p className="text-gray-600 mb-6">Your survey has been submitted successfully.</p>
+if (submitted) {
+  return (
+    <div className="max-w-2xl mx-auto p-6 text-center">
+      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <CheckCircle className="h-10 w-10 text-green-600" />
+      </div>
+      <h2 className="text-2xl font-bold mb-4">Thank You!</h2>
+      <p className="text-gray-600 mb-6">
+        Your CNA task time data has been submitted successfully. This research contributes 
+        to the understanding of nursing workload patterns and task completion times.
+      </p>
+      
+      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
+        <p className="text-sm text-emerald-800">
+          <strong>Help expand this research!</strong> Share this survey with CNA and nursing colleagues 
+          to build a larger dataset for workload analysis and research.
+        </p>
+      </div>
+
+      <div className="space-y-3">
         <button
-          onClick={() => navigate('/results')}
-          className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+          onClick={() => {
+            const currentUrl = window.location.origin;
+            const surveyUrls = {
+              rn: `${currentUrl}/survey/nurse`,
+              cna: `${currentUrl}/survey/cna`
+            };
+            const text = `Help improve nursing workload management! Share your task time data:\n\nRN Survey: ${surveyUrls.rn}\nCNA Survey: ${surveyUrls.cna}\n\nYour anonymous input helps optimize staffing and patient care.`;
+            
+            if (navigator.share) {
+              navigator.share({
+                title: 'Nursing Workload Survey',
+                text: text,
+                url: currentUrl
+              }).catch(console.error);
+            } else {
+              navigator.clipboard.writeText(text).then(() => {
+                alert('Survey links copied to clipboard!');
+              }).catch(() => {
+                alert(`Share these survey links:\n\n${text}`);
+              });
+            }
+          }}
+          className="w-full px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
         >
-          View Results
+          📋 Share Survey with Colleagues
+        </button>
+
+        <button
+          onClick={() => navigate('/')}
+          className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          Return to Dashboard
         </button>
       </div>
-    );
-  }
+
+      <div className="mt-8 text-sm text-gray-500">
+        <p>Your response is anonymous and helps create better working conditions for all nursing staff.</p>
+      </div>
+    </div>
+  );
+}
 
   return (
     <div className="max-w-4xl mx-auto p-6">
