@@ -868,3 +868,67 @@ export function exportToJSON(data, filename) {
   link.download = `${filename}_${new Date().toISOString().split('T')[0]}.json`;
   link.click();
 }
+
+// Add this helper function to src/lib/supabase.js for schema validation
+
+export async function validateDatabaseSchema() {
+  try {
+    // Check if required columns exist in survey_responses table
+    const { data: tableInfo, error } = await supabase
+      .from('survey_responses')
+      .select('quality_score, validation_warnings, outlier_flags, flagged_for_review')
+      .limit(1);
+
+    if (error) {
+      console.warn('Some quality columns may be missing from survey_responses table:', error.message);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Schema validation failed:', error);
+    return false;
+  }
+}
+
+// Add this to check if RPC functions exist
+export async function checkRPCFunctions() {
+  const rpcFunctions = [
+    'get_data_quality_summary',
+    'detect_outliers', 
+    'detect_suspicious_responses',
+    'update_quality_scores'
+  ];
+
+  const results = {};
+  
+  for (const func of rpcFunctions) {
+    try {
+      // Try to call with minimal parameters to see if function exists
+      await supabase.rpc(func, {});
+      results[func] = true;
+    } catch (error) {
+      results[func] = false;
+      console.log(`RPC function ${func} not available:`, error.message);
+    }
+  }
+
+  return results;
+}
+
+// Enhanced error handler for RPC calls
+export async function callRPCWithFallback(functionName, params, fallbackFunction) {
+  try {
+    const { data, error } = await supabase.rpc(functionName, params);
+    
+    if (error) {
+      console.warn(`RPC ${functionName} failed, using fallback:`, error.message);
+      return await fallbackFunction();
+    }
+    
+    return data;
+  } catch (error) {
+    console.warn(`RPC ${functionName} not available, using fallback:`, error.message);
+    return await fallbackFunction();
+  }
+}
