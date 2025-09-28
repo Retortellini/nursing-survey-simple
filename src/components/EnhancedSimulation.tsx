@@ -1,14 +1,8 @@
-// src/components/EnhancedSimulation.tsx
+// src/components/EnhancedSimulation.tsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { 
   getTaskStatistics,
-  getConfidenceIntervals,
-  runSensitivityAnalysis,
-  calculateStaffingCosts,
-  saveScenario,
-  compareScenarios,
-  calculateWhatIfImpact,
-  getOptimalStaffing
+  saveSimulationResults
 } from '../lib/supabase';
 import {
   LineChart,
@@ -24,8 +18,9 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
-  Area,
-  AreaChart
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
 import {
   Play,
@@ -46,7 +41,6 @@ const EnhancedSimulation = () => {
   const [sensitivityData, setSensitivityData] = useState([]);
   const [whatIfData, setWhatIfData] = useState([]);
   const [optimalRecommendations, setOptimalRecommendations] = useState([]);
-  const [scenarioComparison, setScenarioComparison] = useState([]);
   
   const [params, setParams] = useState({
     nurseRatios: [3, 4, 5],
@@ -83,6 +77,40 @@ const EnhancedSimulation = () => {
     }
   };
 
+  // Calculate confidence intervals locally (simplified version)
+  const calculateConfidenceInterval = (data, confidence = 0.95) => {
+    if (data.length === 0) return { lower: 0, upper: 0 };
+    
+    const mean = data.reduce((sum, val) => sum + val, 0) / data.length;
+    const variance = data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
+    const stdDev = Math.sqrt(variance);
+    
+    // Using normal approximation
+    const z = confidence === 0.95 ? 1.96 : confidence === 0.99 ? 2.58 : 1.65;
+    const margin = z * stdDev / Math.sqrt(data.length);
+    
+    return {
+      lower: Math.max(0, mean - margin),
+      upper: Math.min(100, mean + margin),
+      stdDev: stdDev
+    };
+  };
+
+  // Calculate staffing costs locally
+  const calculateStaffingCosts = (rnCount, cnaCount, hoursPerShift, rnRate, cnaRate) => {
+    const rnCost = rnCount * hoursPerShift * rnRate;
+    const cnaCost = cnaCount * hoursPerShift * cnaRate;
+    const totalCost = rnCost + cnaCost;
+    const totalWithOverhead = totalCost * 1.3; // 30% overhead
+    
+    return {
+      rnCost,
+      cnaCost,
+      totalCost,
+      totalWithOverhead
+    };
+  };
+
   const runEnhancedSimulation = async () => {
     if (taskData.length === 0) {
       alert('Not enough survey data. Need at least 3 responses per task.');
@@ -92,11 +120,11 @@ const EnhancedSimulation = () => {
     setLoading(true);
     try {
       const results = [];
-      const scenarioGroupId = crypto.randomUUID();
+      const allCompletionRates = [];
 
       for (const nurseRatio of params.nurseRatios) {
         for (const cnaRatio of params.cnaRatios) {
-          let completedShifts = 0;
+          const completionRates = [];
 
           for (let i = 0; i < params.iterations; i++) {
             let totalRnTime = 0;
@@ -108,14 +136,18 @@ const EnhancedSimulation = () => {
               
               const isCnaTask = task.task_name.toLowerCase().includes('vital') || 
                                task.task_name.toLowerCase().includes('hygiene') || 
-                               task.task_name.toLowerCase().includes('mobility');
+                               task.task_name.toLowerCase().includes('mobility') ||
+                               task.task_name.toLowerCase().includes('toileting') ||
+                               task.task_name.toLowerCase().includes('feeding');
               
               if (!isCnaTask) {
+                // RN tasks
                 for (let p = 0; p < nurseRatio; p++) {
                   const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
                   totalRnTime += Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
                 }
               } else {
+                // CNA tasks
                 for (let p = 0; p < cnaRatio; p++) {
                   const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
                   totalCnaTime += Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
@@ -124,24 +156,16 @@ const EnhancedSimulation = () => {
             });
 
             const shiftMinutes = params.shiftHours * 60;
-            if (totalRnTime <= shiftMinutes && totalCnaTime <= shiftMinutes) {
-              completedShifts++;
-            }
+            const completionRate = (totalRnTime <= shiftMinutes && totalCnaTime <= shiftMinutes) ? 100 : 0;
+            completionRates.push(completionRate);
           }
 
-          const completionRate = (completedShifts / params.iterations) * 100;
-
-          const ciData = await getConfidenceIntervals(
-            nurseRatio,
-            cnaRatio,
-            params.shiftHours,
-            params.iterations,
-            params.confidenceLevel
-          );
+          const avgCompletionRate = completionRates.reduce((sum, rate) => sum + rate, 0) / completionRates.length;
+          const ci = calculateConfidenceInterval(completionRates, params.confidenceLevel);
 
           const rnCount = Math.ceil(params.patientVolume / nurseRatio);
           const cnaCount = Math.ceil(params.patientVolume / cnaRatio);
-          const costData = await calculateStaffingCosts(
+          const costData = calculateStaffingCosts(
             rnCount,
             cnaCount,
             params.shiftHours,
@@ -152,39 +176,43 @@ const EnhancedSimulation = () => {
           const result = {
             nurseRatio: `1:${nurseRatio}`,
             cnaRatio: `1:${cnaRatio}`,
-            completionRate: Math.round(completionRate * 10) / 10,
-            confidenceLower: ciData?.ci_lower || completionRate - 5,
-            confidenceUpper: ciData?.ci_upper || completionRate + 5,
-            stdDev: ciData?.std_dev || 0,
-            totalCost: costData?.total_with_overhead || 0,
-            rnCost: costData?.rn_cost || 0,
-            cnaCost: costData?.cna_cost || 0,
+            completionRate: Math.round(avgCompletionRate * 10) / 10,
+            confidenceLower: Math.round(ci.lower * 10) / 10,
+            confidenceUpper: Math.round(ci.upper * 10) / 10,
+            stdDev: Math.round(ci.stdDev * 10) / 10,
+            totalCost: Math.round(costData.totalWithOverhead),
+            rnCost: Math.round(costData.rnCost),
+            cnaCost: Math.round(costData.cnaCost),
             rnCount,
             cnaCount,
-            riskScore: completionRate < 80 ? 100 - completionRate : (100 - completionRate) * 0.5,
-            failureProbability: 100 - completionRate
+            riskScore: avgCompletionRate < 80 ? 100 - avgCompletionRate : (100 - avgCompletionRate) * 0.5,
+            failureProbability: 100 - avgCompletionRate
           };
 
           results.push(result);
-
-          await saveScenario(
-            scenarioGroupId,
-            `RN 1:${nurseRatio} | CNA 1:${cnaRatio}`,
-            { nurseRatio, cnaRatio, shiftHours: params.shiftHours },
-            { completionRate: result.completionRate },
-            { totalCost: result.totalCost, riskScore: result.riskScore }
-          );
+          allCompletionRates.push(avgCompletionRate);
         }
       }
 
       setSimulationResults(results);
 
-      const comparison = await compareScenarios(scenarioGroupId);
-      setScenarioComparison(comparison);
+      // Save to database
+      await saveSimulationResults({
+        cna_ratios: params.cnaRatios,
+        nurse_ratios: params.nurseRatios,
+        shift_hours: params.shiftHours,
+        iterations: params.iterations,
+        results: results,
+        enhanced_features: {
+          confidence_intervals: true,
+          cost_analysis: true,
+          risk_assessment: true
+        }
+      });
 
     } catch (error) {
       console.error('Error running simulation:', error);
-      alert('Error running simulation');
+      alert('Error running simulation: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -201,24 +229,50 @@ const EnhancedSimulation = () => {
       const baseNurseRatio = params.nurseRatios[Math.floor(params.nurseRatios.length / 2)];
       const baseCnaRatio = params.cnaRatios[Math.floor(params.cnaRatios.length / 2)];
 
-      const nurseData = await runSensitivityAnalysis(
-        baseNurseRatio,
-        baseCnaRatio,
-        'nurse_ratio',
-        [2, 3, 4, 5, 6]
-      );
+      // Simple sensitivity analysis
+      const sensitivityResults = [];
+      
+      // Nurse ratio sensitivity
+      for (const ratio of [2, 3, 4, 5, 6]) {
+        const baseResult = simulationResults.find(r => 
+          r.nurseRatio === `1:${baseNurseRatio}` && r.cnaRatio === `1:${baseCnaRatio}`
+        );
+        const testResult = simulationResults.find(r => 
+          r.nurseRatio === `1:${ratio}` && r.cnaRatio === `1:${baseCnaRatio}`
+        );
+        
+        if (baseResult && testResult) {
+          sensitivityResults.push({
+            parameter_name: 'nurse_ratio',
+            parameter_value: ratio,
+            completion_rate: testResult.completionRate,
+            rate_change_percent: ((testResult.completionRate - baseResult.completionRate) / baseResult.completionRate) * 100,
+            type: 'RN Ratio'
+          });
+        }
+      }
 
-      const cnaData = await runSensitivityAnalysis(
-        baseNurseRatio,
-        baseCnaRatio,
-        'cna_ratio',
-        [8, 10, 12, 14, 16]
-      );
+      // CNA ratio sensitivity
+      for (const ratio of [8, 10, 12, 14, 16]) {
+        const baseResult = simulationResults.find(r => 
+          r.nurseRatio === `1:${baseNurseRatio}` && r.cnaRatio === `1:${baseCnaRatio}`
+        );
+        const testResult = simulationResults.find(r => 
+          r.nurseRatio === `1:${baseNurseRatio}` && r.cnaRatio === `1:${ratio}`
+        );
+        
+        if (baseResult && testResult) {
+          sensitivityResults.push({
+            parameter_name: 'cna_ratio',
+            parameter_value: ratio,
+            completion_rate: testResult.completionRate,
+            rate_change_percent: ((testResult.completionRate - baseResult.completionRate) / baseResult.completionRate) * 100,
+            type: 'CNA Ratio'
+          });
+        }
+      }
 
-      setSensitivityData([
-        ...nurseData.map(d => ({ ...d, type: 'RN Ratio' })),
-        ...cnaData.map(d => ({ ...d, type: 'CNA Ratio' }))
-      ]);
+      setSensitivityData(sensitivityResults);
 
     } catch (error) {
       console.error('Error running sensitivity analysis:', error);
@@ -230,15 +284,46 @@ const EnhancedSimulation = () => {
   const runWhatIf = async () => {
     setLoading(true);
     try {
-      const impact = await calculateWhatIfImpact(
-        whatIfParams.currentNurseRatio,
-        whatIfParams.currentCnaRatio,
-        whatIfParams.proposedNurseRatio,
-        whatIfParams.proposedCnaRatio,
-        params.patientVolume
+      // Calculate what-if impact
+      const currentResult = simulationResults?.find(r => 
+        r.nurseRatio === `1:${whatIfParams.currentNurseRatio}` && 
+        r.cnaRatio === `1:${whatIfParams.currentCnaRatio}`
+      );
+      
+      const proposedResult = simulationResults?.find(r => 
+        r.nurseRatio === `1:${whatIfParams.proposedNurseRatio}` && 
+        r.cnaRatio === `1:${whatIfParams.proposedCnaRatio}`
       );
 
-      setWhatIfData(impact);
+      if (currentResult && proposedResult) {
+        const impact = [
+          {
+            metric: 'Completion Rate',
+            current_value: currentResult.completionRate,
+            proposed_value: proposedResult.completionRate,
+            change_value: proposedResult.completionRate - currentResult.completionRate,
+            change_percent: ((proposedResult.completionRate - currentResult.completionRate) / currentResult.completionRate) * 100
+          },
+          {
+            metric: 'Total Cost',
+            current_value: currentResult.totalCost,
+            proposed_value: proposedResult.totalCost,
+            change_value: proposedResult.totalCost - currentResult.totalCost,
+            change_percent: ((proposedResult.totalCost - currentResult.totalCost) / currentResult.totalCost) * 100
+          },
+          {
+            metric: 'Risk Score',
+            current_value: currentResult.riskScore,
+            proposed_value: proposedResult.riskScore,
+            change_value: proposedResult.riskScore - currentResult.riskScore,
+            change_percent: currentResult.riskScore > 0 ? ((proposedResult.riskScore - currentResult.riskScore) / currentResult.riskScore) * 100 : 0
+          }
+        ];
+
+        setWhatIfData(impact);
+      } else {
+        alert('Current or proposed scenario not found in simulation results');
+      }
     } catch (error) {
       console.error('Error calculating what-if:', error);
     } finally {
@@ -247,13 +332,31 @@ const EnhancedSimulation = () => {
   };
 
   const findOptimal = async () => {
+    if (!simulationResults || simulationResults.length === 0) {
+      alert('Please run simulation first');
+      return;
+    }
+
     setLoading(true);
     try {
-      const recommendations = await getOptimalStaffing(
-        params.minCompletionRate,
-        params.maxBudget,
-        params.patientVolume
+      // Find scenarios that meet requirements
+      const validScenarios = simulationResults.filter(r => 
+        r.completionRate >= params.minCompletionRate && 
+        r.totalCost <= params.maxBudget
       );
+
+      // Sort by efficiency (completion rate / cost ratio)
+      const recommendations = validScenarios
+        .map(r => ({
+          ...r,
+          efficiency_score: Math.round((r.completionRate / r.totalCost) * 1000),
+          meets_requirements: r.completionRate >= params.minCompletionRate && r.totalCost <= params.maxBudget,
+          nurse_ratio: r.nurseRatio,
+          cna_ratio: r.cnaRatio,
+          completion_rate: r.completionRate,
+          estimated_cost: r.totalCost
+        }))
+        .sort((a, b) => b.efficiency_score - a.efficiency_score);
 
       setOptimalRecommendations(recommendations);
     } catch (error) {
@@ -270,8 +373,7 @@ const EnhancedSimulation = () => {
       name: `${r.nurseRatio} | ${r.cnaRatio}`,
       completion: r.completionRate,
       lower: r.confidenceLower,
-      upper: r.confidenceUpper,
-      error: [(r.completionRate - r.confidenceLower), (r.confidenceUpper - r.completionRate)]
+      upper: r.confidenceUpper
     }));
   };
 
@@ -291,6 +393,8 @@ const EnhancedSimulation = () => {
     if (risk < 40) return 'text-yellow-600';
     return 'text-red-600';
   };
+
+  const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
   if (loading && !simulationResults) {
     return (
@@ -366,7 +470,10 @@ const EnhancedSimulation = () => {
                   type="text"
                   className="w-full p-2 border rounded-lg"
                   value={params.nurseRatios.join(', ')}
-                  onChange={(e) => setParams({ ...params, nurseRatios: e.target.value.split(',').map(n => parseInt(n.trim())) })}
+                  onChange={(e) => {
+                    const ratios = e.target.value.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+                    setParams({ ...params, nurseRatios: ratios });
+                  }}
                   placeholder="3, 4, 5"
                 />
               </div>
@@ -377,7 +484,10 @@ const EnhancedSimulation = () => {
                   type="text"
                   className="w-full p-2 border rounded-lg"
                   value={params.cnaRatios.join(', ')}
-                  onChange={(e) => setParams({ ...params, cnaRatios: e.target.value.split(',').map(n => parseInt(n.trim())) })}
+                  onChange={(e) => {
+                    const ratios = e.target.value.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+                    setParams({ ...params, cnaRatios: ratios });
+                  }}
                   placeholder="10, 12, 14"
                 />
               </div>
@@ -401,7 +511,7 @@ const EnhancedSimulation = () => {
                   type="number"
                   className="w-full p-2 border rounded-lg"
                   value={params.rnHourlyRate}
-                  onChange={(e) => setParams({ ...params, rnHourlyRate: parseFloat(e.target.value) })}
+                  onChange={(e) => setParams({ ...params, rnHourlyRate: parseFloat(e.target.value) || 45 })}
                 />
               </div>
 
@@ -411,7 +521,7 @@ const EnhancedSimulation = () => {
                   type="number"
                   className="w-full p-2 border rounded-lg"
                   value={params.cnaHourlyRate}
-                  onChange={(e) => setParams({ ...params, cnaHourlyRate: parseFloat(e.target.value) })}
+                  onChange={(e) => setParams({ ...params, cnaHourlyRate: parseFloat(e.target.value) || 22 })}
                 />
               </div>
 
@@ -421,14 +531,14 @@ const EnhancedSimulation = () => {
                   type="number"
                   className="w-full p-2 border rounded-lg"
                   value={params.patientVolume}
-                  onChange={(e) => setParams({ ...params, patientVolume: parseInt(e.target.value) })}
+                  onChange={(e) => setParams({ ...params, patientVolume: parseInt(e.target.value) || 30 })}
                 />
               </div>
             </div>
 
             <button
               onClick={runEnhancedSimulation}
-              disabled={loading}
+              disabled={loading || taskData.length === 0}
               className="mt-6 w-full flex items-center justify-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300"
             >
               {loading ? (
@@ -450,18 +560,24 @@ const EnhancedSimulation = () => {
             <>
               {/* Confidence Intervals Chart */}
               <div className="bg-white rounded-lg shadow p-6 mb-8">
-                <h2 className="text-lg font-semibold mb-4">Completion Rates with {(params.confidenceLevel * 100)}% Confidence Intervals</h2>
+                <h2 className="text-lg font-semibold mb-4">
+                  Completion Rates with {(params.confidenceLevel * 100)}% Confidence Intervals
+                </h2>
                 <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={getConfidenceChartData()}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" fontSize={12} angle={-45} textAnchor="end" height={100} />
+                      <XAxis 
+                        dataKey="name" 
+                        fontSize={12} 
+                        angle={-45} 
+                        textAnchor="end" 
+                        height={100} 
+                      />
                       <YAxis label={{ value: 'Completion Rate (%)', angle: -90, position: 'insideLeft' }} />
                       <Tooltip />
                       <Legend />
                       <Bar dataKey="completion" fill="#4F46E5" name="Completion Rate" />
-                      <Bar dataKey="lower" fill="#93C5FD" name="Lower Bound" />
-                      <Bar dataKey="upper" fill="#1E40AF" name="Upper Bound" />
                       <ReferenceLine y={90} stroke="#EF4444" strokeDasharray="3 3" label="Target: 90%" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -473,10 +589,18 @@ const EnhancedSimulation = () => {
                 <h2 className="text-lg font-semibold mb-4">Cost-Efficiency Analysis</h2>
                 <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ScatterChart>
+                    <ScatterChart data={getCostEfficiencyData()}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="cost" name="Total Cost" label={{ value: 'Total Cost ($)', position: 'bottom' }} />
-                      <YAxis dataKey="completion" name="Completion Rate" label={{ value: 'Completion Rate (%)', angle: -90, position: 'insideLeft' }} />
+                      <XAxis 
+                        dataKey="cost" 
+                        name="Total Cost" 
+                        label={{ value: 'Total Cost ($)', position: 'bottom' }} 
+                      />
+                      <YAxis 
+                        dataKey="completion" 
+                        name="Completion Rate" 
+                        label={{ value: 'Completion Rate (%)', angle: -90, position: 'insideLeft' }} 
+                      />
                       <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                       <Scatter data={getCostEfficiencyData()} fill="#4F46E5" />
                     </ScatterChart>
@@ -517,7 +641,7 @@ const EnhancedSimulation = () => {
                             </span>
                           </td>
                           <td className="text-right py-3 px-4 text-sm text-gray-600">
-                            {result.confidenceLower.toFixed(1)} - {result.confidenceUpper.toFixed(1)}%
+                            {result.confidenceLower} - {result.confidenceUpper}%
                           </td>
                           <td className="text-right py-3 px-4">${result.totalCost.toLocaleString()}</td>
                           <td className="text-right py-3 px-4">
@@ -557,12 +681,22 @@ const EnhancedSimulation = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={sensitivityData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="parameter_value" label={{ value: 'Ratio Value', position: 'bottom' }} />
-                    <YAxis label={{ value: 'Completion Rate (%)', angle: -90, position: 'insideLeft' }} />
+                    <XAxis 
+                      dataKey="parameter_value" 
+                      label={{ value: 'Ratio Value', position: 'bottom' }} 
+                    />
+                    <YAxis 
+                      label={{ value: 'Completion Rate (%)', angle: -90, position: 'insideLeft' }} 
+                    />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="completion_rate" stroke="#4F46E5" strokeWidth={2} name="Completion Rate" />
-                    <Line type="monotone" dataKey="rate_change_percent" stroke="#10B981" strokeWidth={2} name="% Change" />
+                    <Line 
+                      type="monotone" 
+                      dataKey="completion_rate" 
+                      stroke="#4F46E5" 
+                      strokeWidth={2} 
+                      name="Completion Rate" 
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -587,7 +721,7 @@ const EnhancedSimulation = () => {
                       type="number"
                       className="w-full p-2 border rounded-lg"
                       value={whatIfParams.currentNurseRatio}
-                      onChange={(e) => setWhatIfParams({ ...whatIfParams, currentNurseRatio: parseInt(e.target.value) })}
+                      onChange={(e) => setWhatIfParams({ ...whatIfParams, currentNurseRatio: parseInt(e.target.value) || 4 })}
                     />
                   </div>
                   <div>
@@ -596,7 +730,7 @@ const EnhancedSimulation = () => {
                       type="number"
                       className="w-full p-2 border rounded-lg"
                       value={whatIfParams.currentCnaRatio}
-                      onChange={(e) => setWhatIfParams({ ...whatIfParams, currentCnaRatio: parseInt(e.target.value) })}
+                      onChange={(e) => setWhatIfParams({ ...whatIfParams, currentCnaRatio: parseInt(e.target.value) || 12 })}
                     />
                   </div>
                 </div>
@@ -611,7 +745,7 @@ const EnhancedSimulation = () => {
                       type="number"
                       className="w-full p-2 border rounded-lg"
                       value={whatIfParams.proposedNurseRatio}
-                      onChange={(e) => setWhatIfParams({ ...whatIfParams, proposedNurseRatio: parseInt(e.target.value) })}
+                      onChange={(e) => setWhatIfParams({ ...whatIfParams, proposedNurseRatio: parseInt(e.target.value) || 3 })}
                     />
                   </div>
                   <div>
@@ -620,7 +754,7 @@ const EnhancedSimulation = () => {
                       type="number"
                       className="w-full p-2 border rounded-lg"
                       value={whatIfParams.proposedCnaRatio}
-                      onChange={(e) => setWhatIfParams({ ...whatIfParams, proposedCnaRatio: parseInt(e.target.value) })}
+                      onChange={(e) => setWhatIfParams({ ...whatIfParams, proposedCnaRatio: parseInt(e.target.value) || 10 })}
                     />
                   </div>
                 </div>
@@ -629,7 +763,7 @@ const EnhancedSimulation = () => {
 
             <button
               onClick={runWhatIf}
-              disabled={loading}
+              disabled={loading || !simulationResults}
               className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300"
             >
               {loading ? 'Calculating...' : 'Calculate Impact'}
@@ -689,7 +823,7 @@ const EnhancedSimulation = () => {
                   type="number"
                   className="w-full p-2 border rounded-lg"
                   value={params.minCompletionRate}
-                  onChange={(e) => setParams({ ...params, minCompletionRate: parseFloat(e.target.value) })}
+                  onChange={(e) => setParams({ ...params, minCompletionRate: parseFloat(e.target.value) || 90 })}
                 />
               </div>
 
@@ -699,7 +833,7 @@ const EnhancedSimulation = () => {
                   type="number"
                   className="w-full p-2 border rounded-lg"
                   value={params.maxBudget}
-                  onChange={(e) => setParams({ ...params, maxBudget: parseFloat(e.target.value) })}
+                  onChange={(e) => setParams({ ...params, maxBudget: parseFloat(e.target.value) || 10000 })}
                 />
               </div>
 
@@ -709,14 +843,14 @@ const EnhancedSimulation = () => {
                   type="number"
                   className="w-full p-2 border rounded-lg"
                   value={params.patientVolume}
-                  onChange={(e) => setParams({ ...params, patientVolume: parseInt(e.target.value) })}
+                  onChange={(e) => setParams({ ...params, patientVolume: parseInt(e.target.value) || 30 })}
                 />
               </div>
             </div>
 
             <button
               onClick={findOptimal}
-              disabled={loading}
+              disabled={loading || !simulationResults}
               className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300"
             >
               {loading ? 'Finding...' : 'Find Optimal Staffing'}
@@ -825,14 +959,6 @@ const EnhancedSimulation = () => {
                 </span>
               </li>
             )}
-            {scenarioComparison.length > 0 && (
-              <li className="flex items-start">
-                <span className="text-green-600 mr-2">✅</span>
-                <span>
-                  Best scenario: {scenarioComparison[0]?.scenario_name} with recommendation score of {scenarioComparison[0]?.recommendation_score}
-                </span>
-              </li>
-            )}
             <li className="flex items-start">
               <span className="text-yellow-600 mr-2">💰</span>
               <span>
@@ -844,6 +970,12 @@ const EnhancedSimulation = () => {
               <span className="text-blue-600 mr-2">💡</span>
               <span>
                 Use sensitivity analysis to understand how changing one parameter affects outcomes
+              </span>
+            </li>
+            <li className="flex items-start">
+              <span className="text-green-600 mr-2">✅</span>
+              <span>
+                Run {params.iterations.toLocaleString()} iterations per scenario for statistical reliability
               </span>
             </li>
           </ul>
