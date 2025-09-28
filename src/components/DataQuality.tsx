@@ -71,19 +71,51 @@ const DataQuality = () => {
     }
   };
 
-  const handleUpdateScores = async () => {
-    setUpdating(true);
-    try {
-      await updateQualityScores();
-      await fetchAllData();
-      alert('Quality scores updated successfully!');
-    } catch (error) {
-      console.error('Error updating scores:', error);
-      alert('Error updating quality scores');
-    } finally {
-      setUpdating(false);
+// Updated handleUpdateScores function in src/components/DataQuality.tsx
+// Replace the existing handleUpdateScores function with this implementation
+
+const handleUpdateScores = async () => {
+  setUpdating(true);
+  try {
+    console.log('Starting quality score update...');
+    
+    const result = await updateQualityScores();
+    
+    console.log('Quality scores update result:', result);
+    
+    // Refresh all data after successful update
+    await fetchAllData();
+    
+    // Show success message with details
+    if (result && result.updated_count !== undefined) {
+      alert(`Quality scores updated successfully!\n\nUpdated ${result.updated_count} responses.\n\nThe dashboard data has been refreshed.`);
+    } else {
+      alert('Quality scores updated successfully! The dashboard data has been refreshed.');
     }
-  };
+    
+  } catch (error) {
+    console.error('Error updating scores:', error);
+    
+    // Provide more detailed error information
+    let errorMessage = 'Error updating quality scores:\n\n';
+    
+    if (error.message) {
+      errorMessage += error.message;
+    } else {
+      errorMessage += 'An unexpected error occurred. Please check the browser console for details.';
+    }
+    
+    // Also suggest potential solutions
+    errorMessage += '\n\nPossible solutions:\n';
+    errorMessage += '• Check your internet connection\n';
+    errorMessage += '• Refresh the page and try again\n';
+    errorMessage += '• Contact support if the issue persists';
+    
+    alert(errorMessage);
+  } finally {
+    setUpdating(false);
+  }
+};
 
   const getQualityColor = (score) => {
     if (score >= 80) return 'text-green-600';
