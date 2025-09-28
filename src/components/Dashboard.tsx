@@ -251,8 +251,7 @@ const Dashboard = () => {
           </p>
           <p className="text-gray-600 max-w-2xl mx-auto">
             Every survey response helps us better understand nursing workload and develop more accurate 
-            staffing simulations. Your anonymous contributions are helping improve patient care and 
-            working conditions for healthcare teams.
+            staffing simulations. Your contributions are anonymous.
           </p>
         </div>
       )}
@@ -285,7 +284,7 @@ const Dashboard = () => {
             </div>
             <h3 className="font-semibold mb-2">Simulation & Insights</h3>
             <p className="text-sm text-gray-600">
-              Data feeds into simulations that help optimize staffing ratios and workload distribution
+              Data feeds into simulations that help understand the effects of staffing ratios and workload distribution
             </p>
           </div>
         </div>
@@ -308,7 +307,7 @@ const Dashboard = () => {
           </Link>
         </div>
         <p className="text-sm text-gray-500 mt-4">
-          Contact your system administrator for access credentials
+          Contact the builder to request access credentials
         </p>
       </div>
     </div>
