@@ -48,55 +48,87 @@ const DataQuality = () => {
     fetchAllData();
   }, [timeRange]);
 
-  const fetchAllData = async () => {
-    setLoading(true);
-    try {
-      const [summaryData, outliersData, suspiciousData, flaggedData, distributionData] = await Promise.all([
-        getDataQualitySummary(timeRange),
-        getOutliers(),
-        getSuspiciousResponses(),
-        getFlaggedResponses(20),
-        getQualityDistribution()
-      ]);
+const fetchAllData = async () => {
+  setLoading(true);
+  try {
+    // Add a small delay to ensure database updates are committed
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const [summaryData, outliersData, suspiciousData, flaggedData, distributionData] = await Promise.all([
+      getDataQualitySummary(timeRange),
+      getOutliers(),
+      getSuspiciousResponses(),
+      getFlaggedResponses(20),
+      getQualityDistribution()
+    ]);
 
-      setSummary(summaryData);
-      setOutliers(outliersData);
-      setSuspicious(suspiciousData);
-      setFlagged(flaggedData);
-      setDistribution(distributionData);
-    } catch (error) {
-      console.error('Error fetching quality data:', error);
-    } finally {
-      setLoading(false);
+    console.log('Fetched data:', {
+      summary: summaryData,
+      outliers: outliersData?.length || 0,
+      suspicious: suspiciousData?.length || 0,
+      flagged: flaggedData?.length || 0
+    });
+
+    setSummary(summaryData);
+    setOutliers(outliersData || []);
+    setSuspicious(suspiciousData || []);
+    setFlagged(flaggedData || []);
+    setDistribution(distributionData);
+    
+  } catch (error) {
+    console.error('Error fetching quality data:', error);
+    
+    // If there's an error, try to fetch basic data
+    try {
+      const basicSummary = await getDataQualitySummary(timeRange);
+      setSummary(basicSummary);
+    } catch (fallbackError) {
+      console.error('Fallback fetch also failed:', fallbackError);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
 // Updated handleUpdateScores function in src/components/DataQuality.tsx
 // Replace the existing handleUpdateScores function with this implementation
-
 const handleUpdateScores = async () => {
   setUpdating(true);
   try {
     console.log('Starting quality score update...');
     
+    // Run the quality score update
     const result = await updateQualityScores();
     
     console.log('Quality scores update result:', result);
     
-    // Refresh all data after successful update
+    // Force refresh ALL data after successful update
+    // This ensures the cards show the new outlier counts
     await fetchAllData();
     
-    // Show success message with details
-    if (result && result.updated_count !== undefined) {
-      alert(`Quality scores updated successfully!\n\nUpdated ${result.updated_count} responses.\n\nThe dashboard data has been refreshed.`);
-    } else {
-      alert('Quality scores updated successfully! The dashboard data has been refreshed.');
+    // Show detailed success message
+    let successMessage = `Quality scores updated successfully!\n\n`;
+    successMessage += `✅ Updated ${result.updated_count} responses\n`;
+    
+    if (result.outliers_detected) {
+      successMessage += `🚨 Detected ${result.outliers_detected} total outliers\n`;
     }
+    
+    if (result.critical_outliers) {
+      successMessage += `⚠️  Found ${result.critical_outliers} critical outliers\n`;
+    }
+    
+    if (result.flagged_for_review) {
+      successMessage += `🔍 Flagged ${result.flagged_for_review} responses for review\n`;
+    }
+    
+    successMessage += `\nThe dashboard has been refreshed with updated data.`;
+    
+    alert(successMessage);
     
   } catch (error) {
     console.error('Error updating scores:', error);
     
-    // Provide more detailed error information
     let errorMessage = 'Error updating quality scores:\n\n';
     
     if (error.message) {
@@ -105,7 +137,6 @@ const handleUpdateScores = async () => {
       errorMessage += 'An unexpected error occurred. Please check the browser console for details.';
     }
     
-    // Also suggest potential solutions
     errorMessage += '\n\nPossible solutions:\n';
     errorMessage += '• Check your internet connection\n';
     errorMessage += '• Refresh the page and try again\n';
