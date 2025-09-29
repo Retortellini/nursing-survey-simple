@@ -8,6 +8,12 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- Netlify form registration so the POST endpoint exists -->
+    <form name="builder-contact" netlify netlify-honeypot="bot-field" hidden>
+      <input type="text" name="message" />
+    </form>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
