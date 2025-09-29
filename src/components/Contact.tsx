@@ -12,7 +12,7 @@ export default function Contact() {
       >
         <input type="hidden" name="form-name" value="builder-contact" />
         <label className="block">
-          Your Message
+          Your Message Should Include Your Contact Information As It Is Not Automatically Recorded
           <textarea
             name="message"
             required

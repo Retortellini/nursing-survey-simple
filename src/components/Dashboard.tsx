@@ -308,7 +308,7 @@ const Dashboard = () => {
         </div>
         <p className="text-sm text-gray-500 mt-4">
             <Link to="/contact" className="text-indigo-600 underline hover:text-indigo-800">
-              Contact the builder to request access
+              Contact The Builder If You've Lost Access
             </Link>
         </p>
       </div>
