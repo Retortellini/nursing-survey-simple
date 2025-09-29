@@ -14,7 +14,7 @@ import RealtimeAnalytics from './components/RealtimeAnalytics';
 import DataQuality from './components/DataQuality';
 import ComparativeAnalytics from './components/ComparativeAnalytics';
 import AdvancedVisualizations from './components/AdvancedVisualizations';
-import Contact from "./Contact"; 
+import Contact from "./components/Contact"; 
 
 
 const Header = () => {
