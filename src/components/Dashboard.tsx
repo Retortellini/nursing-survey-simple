@@ -182,7 +182,7 @@ const Dashboard = () => {
           <ClipboardList className="h-12 w-12 mb-4" />
           <h3 className="text-2xl font-bold mb-2">Take CNA Survey</h3>
           <p className="mb-4 opacity-90">
-            Share your task time data as a Certified Nursing Assistant to contribute to better staffing
+            Share your task time data as a Certified Nursing Assistant to contribute to better workload understanding
           </p>
           <div className="flex items-center text-sm font-semibold">
             Start Survey <ArrowRight className="ml-2 h-4 w-4" />
