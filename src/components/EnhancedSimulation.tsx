@@ -48,11 +48,11 @@ const EnhancedSimulation = () => {
     shiftHours: 8,
     iterations: 1000,
     confidenceLevel: 0.95,
-    rnHourlyRate: 45,
-    cnaHourlyRate: 22,
-    patientVolume: 30,
+    rnHourlyRate: 95,
+    cnaHourlyRate: 23,
+    patientVolume: 24,
     minCompletionRate: 90,
-    maxBudget: 10000
+    maxBudget: 50000
   });
 
   const [whatIfParams, setWhatIfParams] = useState({
