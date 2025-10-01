@@ -689,10 +689,10 @@ const EnhancedSimulation = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="parameter_value" 
-                      label={{ value: 'Ratio Value', position: 'bottom' }} 
+                      label={{ value: 'Ratio Value', position: 'top' }} 
                     />
                     <YAxis 
-                      label={{ value: 'Completion Rate (%)', angle: -90, position: 'top' }} 
+                      label={{ value: 'Completion Rate (%)', angle: -90, position: 'insideLeft' }} 
                     />
                     <Tooltip />
                     <Legend />
