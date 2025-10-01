@@ -692,7 +692,7 @@ const EnhancedSimulation = () => {
                       label={{ value: 'Ratio Value', position: 'bottom' }} 
                     />
                     <YAxis 
-                      label={{ value: 'Completion Rate (%)', angle: -90, position: 'insideLeft' }} 
+                      label={{ value: 'Completion Rate (%)', angle: -90, position: 'top' }} 
                     />
                     <Tooltip />
                     <Legend />
