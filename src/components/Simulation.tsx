@@ -87,6 +87,41 @@ const Simulation = () => {
           : 0.5; // Default to 50% if no frequency data
       });
 
+      // DEBUG: Log frequencies for emergency tasks
+      console.log('=== FREQUENCY DEBUG ===');
+      if (avgFrequencies['Code Blue']) {
+        console.log('🚨 Code Blue frequency:', avgFrequencies['Code Blue']);
+        console.log('🚨 Code Blue raw data:', frequencyData['Code Blue']);
+      }
+      if (avgFrequencies['Rapid Response']) {
+        console.log('🚨 Rapid Response frequency:', avgFrequencies['Rapid Response']);
+        console.log('🚨 Rapid Response raw data:', frequencyData['Rapid Response']);
+      }
+
+      // CRITICAL FIX: Override emergency task frequencies if they're unrealistic
+      // Emergency tasks should NEVER exceed 5% probability
+      const EMERGENCY_TASKS = {
+        'Code Blue': 0.005,  // 0.5% - roughly 1 per 200 patient-shifts
+        'Rapid Response': 0.01,  // 1% - roughly 1 per 100 patient-shifts
+        'Blood Administration': 0.05  // 5% - roughly 1 per 20 patient-shifts
+      };
+
+      Object.entries(EMERGENCY_TASKS).forEach(([taskName, correctFrequency]) => {
+        if (avgFrequencies[taskName] !== undefined) {
+          const currentFreq = avgFrequencies[taskName];
+          if (currentFreq > 0.10) {
+            console.warn(`⚠️ FIXING: ${taskName} had INVALID frequency ${currentFreq.toFixed(3)}, setting to ${correctFrequency}`);
+            avgFrequencies[taskName] = correctFrequency;
+          } else {
+            console.log(`✅ ${taskName} frequency is realistic: ${currentFreq.toFixed(3)}`);
+          }
+        } else {
+          console.log(`ℹ️ ${taskName} not found in data, setting to: ${correctFrequency}`);
+          avgFrequencies[taskName] = correctFrequency;
+        }
+      });
+      console.log('=== END FREQUENCY DEBUG ===');
+
       const simulationResults = [];
 
       for (const nurseRatio of params.nurseRatios) {
