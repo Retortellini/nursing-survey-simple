@@ -123,21 +123,30 @@ const Simulation = () => {
                   totalRnTime += taskTime;
                   if (i === 0) console.log(`  RN One-time: ${task.task_name} = ${Math.round(taskTime)} min`);
                 } else {
-                  // Per-patient tasks: task time × number of patients × occurrence probability
-                  const patientsNeedingTask = Math.round(nurseRatio * probability);
-                  const timeForTask = taskTime * patientsNeedingTask;
-                  totalRnTime += timeForTask;
-                  if (i === 0 && patientsNeedingTask > 0) {
-                    console.log(`  RN Per-patient: ${task.task_name} = ${Math.round(taskTime)} min × ${patientsNeedingTask} patients = ${Math.round(timeForTask)} min`);
+                  // Per-patient tasks with probability
+                  // For each patient, randomly determine if task occurs based on probability
+                  for (let p = 0; p < nurseRatio; p++) {
+                    if (Math.random() < probability) {
+                      totalRnTime += taskTime;
+                    }
+                  }
+                  // Debug logging only on first iteration
+                  if (i === 0) {
+                    const expectedOccurrences = nurseRatio * probability;
+                    console.log(`  RN Per-patient: ${task.task_name} = ${Math.round(taskTime)} min × ${expectedOccurrences.toFixed(2)} expected occurrences (${(probability * 100).toFixed(1)}% probability)`);
                   }
                 }
               } else {
                 // CNA tasks - per patient with probability
-                const patientsNeedingTask = Math.round(cnaRatio * probability);
-                const timeForTask = taskTime * patientsNeedingTask;
-                totalCnaTime += timeForTask;
-                if (i === 0 && patientsNeedingTask > 0) {
-                  console.log(`  CNA Per-patient: ${task.task_name} = ${Math.round(taskTime)} min × ${patientsNeedingTask} patients = ${Math.round(timeForTask)} min`);
+                for (let p = 0; p < cnaRatio; p++) {
+                  if (Math.random() < probability) {
+                    totalCnaTime += taskTime;
+                  }
+                }
+                // Debug logging only on first iteration
+                if (i === 0) {
+                  const expectedOccurrences = cnaRatio * probability;
+                  console.log(`  CNA Per-patient: ${task.task_name} = ${Math.round(taskTime)} min × ${expectedOccurrences.toFixed(2)} expected occurrences (${(probability * 100).toFixed(1)}% probability)`);
                 }
               }
             });
