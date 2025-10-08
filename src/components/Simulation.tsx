@@ -58,12 +58,28 @@ const Simulation = () => {
     try {
       // Get frequency data from survey responses
       const frequencyData = {};
-      const responses = await fetch(`https://ulwvuntjsgqzajhptskk.supabase.co/rest/v1/survey_responses?select=responses`, {
-        headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsd3Z1bnRqc2dxemFqaHB0c2trIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MDY0NTEsImV4cCI6MjA3NDQ4MjQ1MX0.7cVEaFV5rHte20K7S0j65QgCOcB01tjiRvoayOvQmE0'
+      // Use test data if in test mode, otherwise fetch from Supabase
+      let surveyData;
+      if (typeof window !== 'undefined' && localStorage.getItem('nursing_survey_data_mode') === 'test') {
+        console.log('📊 Simulation using TEST DATA for frequencies');
+        const testDataStr = localStorage.getItem('nursing_survey_test_data');
+        if (testDataStr) {
+          const testData = JSON.parse(testDataStr);
+          surveyData = testData.data || [];
+          console.log(`✅ Loaded ${surveyData.length} test responses for simulation`);
+        } else {
+          console.warn('⚠️ Test mode enabled but no test data found!');
+          surveyData = [];
         }
-      });
-      const surveyData = await responses.json();
+      } else {
+        console.log('📊 Simulation using PRODUCTION DATA for frequencies');
+        const responses = await fetch(`https://ulwvuntjsgqzajhptskk.supabase.co/rest/v1/survey_responses?select=responses`, {
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsd3Z1bnRqc2dxemFqaHB0c2trIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MDY0NTEsImV4cCI6MjA3NDQ4MjQ1MX0.7cVEaFV5rHte20K7S0j65QgCOcB01tjiRvoayOvQmE0'
+          }
+        });
+        surveyData = await responses.json();
+      }
       
       // Calculate average frequency for each task
       surveyData.forEach(response => {
