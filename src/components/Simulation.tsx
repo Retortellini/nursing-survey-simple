@@ -92,8 +92,7 @@ const Simulation = () => {
       for (const nurseRatio of params.nurseRatios) {
         for (const cnaRatio of params.cnaRatios) {
           const completionRates = []; // Store all iteration results for confidence intervals
-
-for (let i = 0; i < params.iterations; i++) {
+          for (let i = 0; i < params.iterations; i++) {
             let totalRnTime = 0;
             let totalCnaTime = 0;
 
@@ -122,15 +121,24 @@ for (let i = 0; i < params.iterations; i++) {
                     task.task_name.toLowerCase().includes('report') ||
                     task.task_name.toLowerCase().includes('chart review')) {
                   totalRnTime += taskTime;
+                  if (i === 0) console.log(`  RN One-time: ${task.task_name} = ${Math.round(taskTime)} min`);
                 } else {
                   // Per-patient tasks: task time × number of patients × occurrence probability
                   const patientsNeedingTask = Math.round(nurseRatio * probability);
-                  totalRnTime += taskTime * patientsNeedingTask;
+                  const timeForTask = taskTime * patientsNeedingTask;
+                  totalRnTime += timeForTask;
+                  if (i === 0 && patientsNeedingTask > 0) {
+                    console.log(`  RN Per-patient: ${task.task_name} = ${Math.round(taskTime)} min × ${patientsNeedingTask} patients = ${Math.round(timeForTask)} min`);
+                  }
                 }
               } else {
                 // CNA tasks - per patient with probability
                 const patientsNeedingTask = Math.round(cnaRatio * probability);
-                totalCnaTime += taskTime * patientsNeedingTask;
+                const timeForTask = taskTime * patientsNeedingTask;
+                totalCnaTime += timeForTask;
+                if (i === 0 && patientsNeedingTask > 0) {
+                  console.log(`  CNA Per-patient: ${task.task_name} = ${Math.round(taskTime)} min × ${patientsNeedingTask} patients = ${Math.round(timeForTask)} min`);
+                }
               }
             });
 
