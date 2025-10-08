@@ -1,36 +1,36 @@
-// src/lib/testData.js - FIXED VERSION with Realistic Frequencies
+// src/lib/testData.js - FIXED VERSION with Corrected Emergency Frequencies
 
 const RN_TASKS = [
-  { name: "Medication Administration", minRange: [10, 15], maxRange: [25, 35], frequency: 0.95 }, // Almost always
-  { name: "Assessment & Documentation", minRange: [15, 20], maxRange: [30, 40], frequency: 0.90 }, // Almost always
-  { name: "Handoff/Report", minRange: [8, 12], maxRange: [15, 25], frequency: 1.0 }, // Always (once per shift)
-  { name: "Chart Review", minRange: [8, 12], maxRange: [12, 18], frequency: 0.85 }, // Usually
-  { name: "I/O's", minRange: [3, 6], maxRange: [8, 12], frequency: 0.30 }, // REDUCED more
-  { name: "Wound Care", minRange: [10, 20], maxRange: [30, 50], frequency: 0.20 }, // REDUCED more
-  { name: "IV Management", minRange: [8, 15], maxRange: [20, 30], frequency: 0.35 }, // REDUCED
-  { name: "Pain Management", minRange: [3, 8], maxRange: [15, 25], frequency: 0.40 }, // REDUCED
-  { name: "Blood Administration", minRange: [25, 35], maxRange: [50, 70], frequency: 0.05 }, // RARE
-  { name: "Turns", minRange: [3, 6], maxRange: [10, 18], frequency: 0.50 }, // REDUCED
-  { name: "Patient Education", minRange: [8, 12], maxRange: [20, 35], frequency: 0.30 }, // REDUCED
-  { name: "Medication Counseling", minRange: [8, 12], maxRange: [20, 30], frequency: 0.25 }, // REDUCED
-  { name: "Family Communication", minRange: [8, 12], maxRange: [20, 30], frequency: 0.35 }, // REDUCED
-  { name: "Tooth Brushing", minRange: [3, 6], maxRange: [10, 18], frequency: 0.20 }, // REDUCED
-  { name: "Ambulation", minRange: [8, 12], maxRange: [15, 25], frequency: 0.40 }, // REDUCED
-  { name: "Out Of Bed For Meals", minRange: [8, 12], maxRange: [15, 25], frequency: 0.45 }, // REDUCED
-  { name: "Code Blue", minRange: [25, 35], maxRange: [50, 70], frequency: 0.01 }, // EXTREMELY RARE!
-  { name: "Rapid Response", minRange: [12, 18], maxRange: [30, 50], frequency: 0.02 }, // EXTREMELY RARE!
-  { name: "M.D. Rounds", minRange: [12, 18], maxRange: [25, 35], frequency: 0.45 } // REDUCED
+  { name: "Medication Administration", minRange: [10, 15], maxRange: [25, 35], frequency: 0.95 },
+  { name: "Assessment & Documentation", minRange: [15, 20], maxRange: [30, 40], frequency: 0.90 },
+  { name: "Handoff/Report", minRange: [8, 12], maxRange: [15, 25], frequency: 1.0 },
+  { name: "Chart Review", minRange: [8, 12], maxRange: [12, 18], frequency: 0.85 },
+  { name: "I/O's", minRange: [3, 6], maxRange: [8, 12], frequency: 0.30 },
+  { name: "Wound Care", minRange: [10, 20], maxRange: [30, 50], frequency: 0.20 },
+  { name: "IV Management", minRange: [8, 15], maxRange: [20, 30], frequency: 0.35 },
+  { name: "Pain Management", minRange: [3, 8], maxRange: [15, 25], frequency: 0.40 },
+  { name: "Blood Administration", minRange: [25, 35], maxRange: [50, 70], frequency: 0.05 },
+  { name: "Turns", minRange: [3, 6], maxRange: [10, 18], frequency: 0.50 },
+  { name: "Patient Education", minRange: [8, 12], maxRange: [20, 35], frequency: 0.30 },
+  { name: "Medication Counseling", minRange: [8, 12], maxRange: [20, 30], frequency: 0.25 },
+  { name: "Family Communication", minRange: [8, 12], maxRange: [20, 30], frequency: 0.35 },
+  { name: "Tooth Brushing", minRange: [3, 6], maxRange: [10, 18], frequency: 0.20 },
+  { name: "Ambulation", minRange: [8, 12], maxRange: [15, 25], frequency: 0.40 },
+  { name: "Out Of Bed For Meals", minRange: [8, 12], maxRange: [15, 25], frequency: 0.45 },
+  { name: "Code Blue", minRange: [25, 35], maxRange: [50, 70], frequency: 0.005 }, // ⚠️ CHANGED: 0.5% instead of 1%
+  { name: "Rapid Response", minRange: [12, 18], maxRange: [30, 50], frequency: 0.01 }, // ⚠️ CHANGED: 1% instead of 2%
+  { name: "M.D. Rounds", minRange: [12, 18], maxRange: [25, 35], frequency: 0.45 }
 ];
 
 const CNA_TASKS = [
-  { name: "Vital Signs", minRange: [3, 6], maxRange: [8, 12], frequency: 0.90 }, // Almost always
-  { name: "I&O Monitoring", minRange: [3, 6], maxRange: [8, 12], frequency: 0.60 }, // REDUCED
-  { name: "Safety Rounds", minRange: [3, 6], maxRange: [8, 12], frequency: 0.70 }, // REDUCED
-  { name: "Patient Hygiene", minRange: [12, 18], maxRange: [25, 35], frequency: 0.50 }, // REDUCED - not every patient every shift
-  { name: "Toileting Assistance", minRange: [3, 8], maxRange: [10, 18], frequency: 0.65 }, // REDUCED
-  { name: "Feeding Assistance", minRange: [8, 12], maxRange: [20, 30], frequency: 0.55 }, // REDUCED
-  { name: "Patient Mobility", minRange: [8, 12], maxRange: [15, 25], frequency: 0.50 }, // REDUCED
-  { name: "Room Turnover", minRange: [3, 8], maxRange: [10, 18], frequency: 0.20 } // REDUCED - only occasional
+  { name: "Vital Signs", minRange: [3, 6], maxRange: [8, 12], frequency: 0.90 },
+  { name: "I&O Monitoring", minRange: [3, 6], maxRange: [8, 12], frequency: 0.60 },
+  { name: "Safety Rounds", minRange: [3, 6], maxRange: [8, 12], frequency: 0.70 },
+  { name: "Patient Hygiene", minRange: [12, 18], maxRange: [25, 35], frequency: 0.50 },
+  { name: "Toileting Assistance", minRange: [3, 8], maxRange: [10, 18], frequency: 0.65 },
+  { name: "Feeding Assistance", minRange: [8, 12], maxRange: [20, 30], frequency: 0.55 },
+  { name: "Patient Mobility", minRange: [8, 12], maxRange: [15, 25], frequency: 0.50 },
+  { name: "Room Turnover", minRange: [3, 8], maxRange: [10, 18], frequency: 0.20 }
 ];
 
 function randomInRange(min, max, variability = 0.2) {
@@ -67,11 +67,14 @@ export function generateSimulatedData(options = {}) {
       const minTime = randomInRange(task.minRange[0], task.minRange[1], variability);
       const maxTime = randomInRange(task.maxRange[0], task.maxRange[1], variability);
       
-      // Add realistic frequency variation
-      // CRITICAL: Keep rare events rare!
+      // ⚠️ FIXED: Improved frequency variation logic
       let frequencyVariation;
-      if (task.frequency < 0.05) {
-        // For very rare events (< 5%), use TINY variation (±10% of base value)
+      if (task.frequency < 0.01) {
+        // For extremely rare events (< 1%), use MINIMAL variation (±5% of base value)
+        // This keeps 0.005 as 0.005 ± 0.00025 (so 0.00475 to 0.00525)
+        frequencyVariation = task.frequency * (Math.random() - 0.5) * 0.1;
+      } else if (task.frequency < 0.05) {
+        // For very rare events (1-5%), use TINY variation (±10% of base value)
         frequencyVariation = task.frequency * (Math.random() - 0.5) * 0.2;
       } else if (task.frequency < 0.30) {
         // For occasional events (5-30%), use ±5% absolute
@@ -85,7 +88,7 @@ export function generateSimulatedData(options = {}) {
       taskResponses[task.name] = {
         minTime: Math.round(minTime),
         maxTime: Math.round(maxTime),
-        frequency: frequency.toFixed(2),
+        frequency: frequency.toFixed(3), // ⚠️ CHANGED: 3 decimals for precision on rare events
         pattern: variability < 0.2 ? 'consistent' : variability < 0.35 ? 'variable' : 'highly_variable'
       };
     });
@@ -115,7 +118,10 @@ export function generateSimulatedData(options = {}) {
       
       // Add realistic frequency variation
       let frequencyVariation;
-      if (task.frequency < 0.10) {
+      if (task.frequency < 0.01) {
+        // For extremely rare events (< 1%), minimal variation
+        frequencyVariation = task.frequency * (Math.random() - 0.5) * 0.1;
+      } else if (task.frequency < 0.10) {
         // For rare events, use ±20% of the base value
         frequencyVariation = task.frequency * (Math.random() - 0.5) * 0.4;
       } else {
@@ -127,7 +133,7 @@ export function generateSimulatedData(options = {}) {
       taskResponses[task.name] = {
         minTime: Math.round(minTime),
         maxTime: Math.round(maxTime),
-        frequency: frequency.toFixed(2),
+        frequency: frequency.toFixed(3),
         pattern: variability < 0.2 ? 'consistent' : variability < 0.35 ? 'variable' : 'highly_variable'
       };
     });
@@ -150,7 +156,6 @@ export function generateSimulatedData(options = {}) {
   return responses;
 }
 
-// Rest of the file remains the same...
 export function generateSimulatedTaskStats(responses) {
   const taskStats = {};
 
@@ -187,7 +192,7 @@ export function generateSimulatedTaskStats(responses) {
       avg_min_time: Math.round(avgMinTime * 10) / 10,
       avg_max_time: Math.round(avgMaxTime * 10) / 10,
       std_dev: Math.round(stdDev * 10) / 10,
-      avg_frequency: Math.round(avgFrequency * 100) / 100,
+      avg_frequency: Math.round(avgFrequency * 1000) / 1000, // ⚠️ CHANGED: 3 decimal precision
       response_count: stat.minTimes.length
     };
   }).filter(stat => stat.response_count >= 3);
@@ -225,7 +230,6 @@ export const TEST_SCENARIOS = {
   }
 };
 
-// Storage functions remain the same...
 export function saveTestDataToStorage(scenario, data) {
   try {
     const testDataKey = 'nursing_survey_test_data';
