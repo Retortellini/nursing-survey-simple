@@ -67,9 +67,17 @@ export function generateSimulatedData(options = {}) {
       const minTime = randomInRange(task.minRange[0], task.minRange[1], variability);
       const maxTime = randomInRange(task.maxRange[0], task.maxRange[1], variability);
       
-      // Add realistic frequency variation (±10% instead of ±15%)
-      const frequencyVariation = (Math.random() - 0.5) * 0.2;
-      const frequency = Math.max(0.01, Math.min(1.0, task.frequency + frequencyVariation));
+      // Add realistic frequency variation
+      // Use smaller variation for rare events to prevent them from becoming common
+      let frequencyVariation;
+      if (task.frequency < 0.10) {
+        // For rare events (< 10%), use ±20% of the base value (not ±20% absolute)
+        frequencyVariation = task.frequency * (Math.random() - 0.5) * 0.4;
+      } else {
+        // For common events, use ±10% absolute
+        frequencyVariation = (Math.random() - 0.5) * 0.2;
+      }
+      const frequency = Math.max(0.001, Math.min(1.0, task.frequency + frequencyVariation));
       
       taskResponses[task.name] = {
         minTime: Math.round(minTime),
@@ -102,8 +110,16 @@ export function generateSimulatedData(options = {}) {
       const minTime = randomInRange(task.minRange[0], task.minRange[1], variability);
       const maxTime = randomInRange(task.maxRange[0], task.maxRange[1], variability);
       
-      const frequencyVariation = (Math.random() - 0.5) * 0.2;
-      const frequency = Math.max(0.01, Math.min(1.0, task.frequency + frequencyVariation));
+      // Add realistic frequency variation
+      let frequencyVariation;
+      if (task.frequency < 0.10) {
+        // For rare events, use ±20% of the base value
+        frequencyVariation = task.frequency * (Math.random() - 0.5) * 0.4;
+      } else {
+        // For common events, use ±10% absolute
+        frequencyVariation = (Math.random() - 0.5) * 0.2;
+      }
+      const frequency = Math.max(0.001, Math.min(1.0, task.frequency + frequencyVariation));
       
       taskResponses[task.name] = {
         minTime: Math.round(minTime),
