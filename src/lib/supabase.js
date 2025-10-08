@@ -1,10 +1,140 @@
 // lib/supabase.js
 import { createClient } from '@supabase/supabase-js';
+import { 
+  loadTestDataFromStorage, 
+  generateSimulatedTaskStats,
+  generateSimulatedData 
+} from './testData';
 
 const supabaseUrl = 'https://ulwvuntjsgqzajhptskk.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsd3Z1bnRqc2dxemFqaHB0c2trIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MDY0NTEsImV4cCI6MjA3NDQ4MjQ1MX0.7cVEaFV5rHte20K7S0j65QgCOcB01tjiRvoayOvQmE0';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// ============================================================================
+// DATA MODE MANAGEMENT - NEW SECTION
+// ============================================================================
+
+const DATA_MODE_KEY = 'nursing_survey_data_mode';
+
+export function getDataMode() {
+  try {
+    return localStorage.getItem(DATA_MODE_KEY) || 'production';
+  } catch {
+    return 'production';
+  }
+}
+
+export function setDataMode(mode) {
+  try {
+    if (mode !== 'production' && mode !== 'test') {
+      throw new Error('Invalid mode. Must be "production" or "test"');
+    }
+    localStorage.setItem(DATA_MODE_KEY, mode);
+    console.log(`🔄 Data mode set to: ${mode.toUpperCase()}`);
+    return true;
+  } catch (error) {
+    console.error('Error setting data mode:', error);
+    return false;
+  }
+}
+
+export function isTestMode() {
+  return getDataMode() === 'test';
+}
+
+export function createTestModeBanner() {
+  if (!isTestMode()) return null;
+
+  const banner = document.createElement('div');
+  banner.id = 'test-mode-banner';
+  banner.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(90deg, #f97316 0%, #ea580c 100%);
+    color: white;
+    padding: 8px 16px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  `;
+  banner.innerHTML = `
+    ⚠️ TEST MODE ACTIVE - Using Simulated Data
+    <button 
+      onclick="window.location.reload()" 
+      style="margin-left: 16px; padding: 4px 12px; background: white; color: #f97316; border: none; border-radius: 4px; font-weight: 600; cursor: pointer;"
+    >
+      Refresh
+    </button>
+  `;
+
+  if (!document.getElementById('test-mode-banner')) {
+    document.body.prepend(banner);
+    document.body.style.paddingTop = '40px';
+  }
+
+  return banner;
+}
+
+export function removeTestModeBanner() {
+  const banner = document.getElementById('test-mode-banner');
+  if (banner) {
+    banner.remove();
+    document.body.style.paddingTop = '0';
+  }
+}
+
+export function getDataModeStatus() {
+  const mode = getDataMode();
+  const testData = isTestMode() ? loadTestDataFromStorage() : null;
+  
+  return {
+    mode,
+    isTest: mode === 'test',
+    isProduction: mode === 'production',
+    testDataInfo: testData ? {
+      scenario: testData.scenario,
+      responseCount: testData.data?.length || 0,
+      timestamp: testData.timestamp
+    } : null
+  };
+}
+
+export function logDataModeStatus() {
+  const status = getDataModeStatus();
+  
+  console.group('🔍 Data Mode Status');
+  console.log('Mode:', status.mode.toUpperCase());
+  
+  if (status.isTest && status.testDataInfo) {
+    console.log('Scenario:', status.testDataInfo.scenario);
+    console.log('Responses:', status.testDataInfo.responseCount);
+    console.log('Generated:', new Date(status.testDataInfo.timestamp).toLocaleString());
+  }
+  
+  console.groupEnd();
+}
+
+// Initialize on load
+if (typeof window !== 'undefined') {
+  window.addEventListener('DOMContentLoaded', () => {
+    if (isTestMode()) {
+      createTestModeBanner();
+    }
+  });
+  
+  window.__nursingSurveyDataMode = {
+    getMode: getDataMode,
+    setMode: setDataMode,
+    isTest: isTestMode,
+    getStatus: getDataModeStatus,
+    logStatus: logDataModeStatus
+  };
+}
 
 // Helper function to submit survey
 export async function submitSurvey(surveyData) {
@@ -29,6 +159,37 @@ export async function submitSurvey(surveyData) {
 
 // Helper function to get survey results
 export async function getSurveyResults(filters = {}) {
+  if (isTestMode()) {
+    console.log('📊 Using TEST data for survey results');
+    const testData = loadTestDataFromStorage();
+    
+    if (!testData || !testData.data) {
+      console.warn('No test data found');
+      return [];
+    }
+
+    let results = [...testData.data];
+
+    if (filters.surveyType) {
+      results = results.filter(r => r.survey_type === filters.surveyType);
+    }
+
+    if (filters.shift) {
+      results = results.filter(r => r.primary_shift === filters.shift);
+    }
+
+    if (filters.startDate) {
+      results = results.filter(r => new Date(r.submitted_at) >= new Date(filters.startDate));
+    }
+
+    if (filters.endDate) {
+      results = results.filter(r => new Date(r.submitted_at) <= new Date(filters.endDate));
+    }
+
+    return results;
+  }
+
+  console.log('📊 Using PRODUCTION data for survey results');
   let query = supabase
     .from('survey_responses')
     .select('*')
@@ -58,6 +219,27 @@ export async function getSurveyResults(filters = {}) {
 
 // Helper function to get task statistics
 export async function getTaskStatistics(surveyType = null) {
+  if (isTestMode()) {
+    console.log('📊 Using TEST data for task statistics');
+    const testData = loadTestDataFromStorage();
+    
+    if (!testData || !testData.data) {
+      console.warn('No test data found');
+      return [];
+    }
+
+    let responses = testData.data;
+    
+    if (surveyType) {
+      responses = responses.filter(r => r.survey_type === surveyType);
+    }
+
+    const stats = generateSimulatedTaskStats(responses);
+    console.log(`✅ Generated stats for ${stats.length} tasks from ${responses.length} responses`);
+    return stats;
+  }
+
+  console.log('📊 Using PRODUCTION data for task statistics');
   const { data, error } = await supabase
     .rpc('get_task_times_for_simulation', { 
       p_survey_type: surveyType 
@@ -200,6 +382,27 @@ function getClientIP() {
 
 // Count responses by type
 export async function getSurveyCounts() {
+  if (isTestMode()) {
+    console.log('📊 Using TEST data for survey counts');
+    const testData = loadTestDataFromStorage();
+    
+    if (!testData || !testData.data) {
+      return { rn: 0, cna: 0, total: 0 };
+    }
+
+    const counts = testData.data.reduce((acc, row) => {
+      acc[row.survey_type] = (acc[row.survey_type] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      rn: counts.rn || 0,
+      cna: counts.cna || 0,
+      total: testData.data.length
+    };
+  }
+
+  console.log('📊 Using PRODUCTION data for survey counts');
   const { data, error } = await supabase
     .from('survey_responses')
     .select('survey_type');
