@@ -5,21 +5,21 @@ const RN_TASKS = [
   { name: "Assessment & Documentation", minRange: [15, 20], maxRange: [30, 40], frequency: 0.90 }, // Almost always
   { name: "Handoff/Report", minRange: [8, 12], maxRange: [15, 25], frequency: 1.0 }, // Always (once per shift)
   { name: "Chart Review", minRange: [8, 12], maxRange: [12, 18], frequency: 0.85 }, // Usually
-  { name: "I/O's", minRange: [3, 6], maxRange: [8, 12], frequency: 0.40 }, // REDUCED - not all patients
-  { name: "Wound Care", minRange: [10, 20], maxRange: [30, 50], frequency: 0.25 }, // REDUCED - only some patients
-  { name: "IV Management", minRange: [8, 15], maxRange: [20, 30], frequency: 0.40 }, // REDUCED
-  { name: "Pain Management", minRange: [3, 8], maxRange: [15, 25], frequency: 0.45 }, // REDUCED
-  { name: "Blood Administration", minRange: [25, 35], maxRange: [50, 70], frequency: 0.08 }, // RARE!
-  { name: "Turns", minRange: [3, 6], maxRange: [10, 18], frequency: 0.60 }, // REDUCED
-  { name: "Patient Education", minRange: [8, 12], maxRange: [20, 35], frequency: 0.35 }, // REDUCED
-  { name: "Medication Counseling", minRange: [8, 12], maxRange: [20, 30], frequency: 0.30 }, // REDUCED
-  { name: "Family Communication", minRange: [8, 12], maxRange: [20, 30], frequency: 0.40 }, // REDUCED
-  { name: "Tooth Brushing", minRange: [3, 6], maxRange: [10, 18], frequency: 0.25 }, // REDUCED
-  { name: "Ambulation", minRange: [8, 12], maxRange: [15, 25], frequency: 0.45 }, // REDUCED
-  { name: "Out Of Bed For Meals", minRange: [8, 12], maxRange: [15, 25], frequency: 0.50 }, // REDUCED
-  { name: "Code Blue", minRange: [25, 35], maxRange: [50, 70], frequency: 0.03 }, // VERY RARE!
-  { name: "Rapid Response", minRange: [12, 18], maxRange: [30, 50], frequency: 0.05 }, // VERY RARE!
-  { name: "M.D. Rounds", minRange: [12, 18], maxRange: [25, 35], frequency: 0.50 } // REDUCED
+  { name: "I/O's", minRange: [3, 6], maxRange: [8, 12], frequency: 0.30 }, // REDUCED more
+  { name: "Wound Care", minRange: [10, 20], maxRange: [30, 50], frequency: 0.20 }, // REDUCED more
+  { name: "IV Management", minRange: [8, 15], maxRange: [20, 30], frequency: 0.35 }, // REDUCED
+  { name: "Pain Management", minRange: [3, 8], maxRange: [15, 25], frequency: 0.40 }, // REDUCED
+  { name: "Blood Administration", minRange: [25, 35], maxRange: [50, 70], frequency: 0.05 }, // RARE
+  { name: "Turns", minRange: [3, 6], maxRange: [10, 18], frequency: 0.50 }, // REDUCED
+  { name: "Patient Education", minRange: [8, 12], maxRange: [20, 35], frequency: 0.30 }, // REDUCED
+  { name: "Medication Counseling", minRange: [8, 12], maxRange: [20, 30], frequency: 0.25 }, // REDUCED
+  { name: "Family Communication", minRange: [8, 12], maxRange: [20, 30], frequency: 0.35 }, // REDUCED
+  { name: "Tooth Brushing", minRange: [3, 6], maxRange: [10, 18], frequency: 0.20 }, // REDUCED
+  { name: "Ambulation", minRange: [8, 12], maxRange: [15, 25], frequency: 0.40 }, // REDUCED
+  { name: "Out Of Bed For Meals", minRange: [8, 12], maxRange: [15, 25], frequency: 0.45 }, // REDUCED
+  { name: "Code Blue", minRange: [25, 35], maxRange: [50, 70], frequency: 0.01 }, // EXTREMELY RARE!
+  { name: "Rapid Response", minRange: [12, 18], maxRange: [30, 50], frequency: 0.02 }, // EXTREMELY RARE!
+  { name: "M.D. Rounds", minRange: [12, 18], maxRange: [25, 35], frequency: 0.45 } // REDUCED
 ];
 
 const CNA_TASKS = [
@@ -67,9 +67,9 @@ export function generateSimulatedData(options = {}) {
       const minTime = randomInRange(task.minRange[0], task.minRange[1], variability);
       const maxTime = randomInRange(task.maxRange[0], task.maxRange[1], variability);
       
-      // Add realistic frequency variation (±15%)
-      const frequencyVariation = (Math.random() - 0.5) * 0.3;
-      const frequency = Math.max(0.05, Math.min(1.0, task.frequency + frequencyVariation));
+      // Add realistic frequency variation (±10% instead of ±15%)
+      const frequencyVariation = (Math.random() - 0.5) * 0.2;
+      const frequency = Math.max(0.01, Math.min(1.0, task.frequency + frequencyVariation));
       
       taskResponses[task.name] = {
         minTime: Math.round(minTime),
@@ -102,8 +102,8 @@ export function generateSimulatedData(options = {}) {
       const minTime = randomInRange(task.minRange[0], task.minRange[1], variability);
       const maxTime = randomInRange(task.maxRange[0], task.maxRange[1], variability);
       
-      const frequencyVariation = (Math.random() - 0.5) * 0.3;
-      const frequency = Math.max(0.05, Math.min(1.0, task.frequency + frequencyVariation));
+      const frequencyVariation = (Math.random() - 0.5) * 0.2;
+      const frequency = Math.max(0.01, Math.min(1.0, task.frequency + frequencyVariation));
       
       taskResponses[task.name] = {
         minTime: Math.round(minTime),
