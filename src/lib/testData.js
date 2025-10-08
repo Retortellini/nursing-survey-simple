@@ -68,13 +68,16 @@ export function generateSimulatedData(options = {}) {
       const maxTime = randomInRange(task.maxRange[0], task.maxRange[1], variability);
       
       // Add realistic frequency variation
-      // Use smaller variation for rare events to prevent them from becoming common
+      // CRITICAL: Keep rare events rare!
       let frequencyVariation;
-      if (task.frequency < 0.10) {
-        // For rare events (< 10%), use ±20% of the base value (not ±20% absolute)
-        frequencyVariation = task.frequency * (Math.random() - 0.5) * 0.4;
+      if (task.frequency < 0.05) {
+        // For very rare events (< 5%), use TINY variation (±10% of base value)
+        frequencyVariation = task.frequency * (Math.random() - 0.5) * 0.2;
+      } else if (task.frequency < 0.30) {
+        // For occasional events (5-30%), use ±5% absolute
+        frequencyVariation = (Math.random() - 0.5) * 0.1;
       } else {
-        // For common events, use ±10% absolute
+        // For common events (>30%), use ±10% absolute
         frequencyVariation = (Math.random() - 0.5) * 0.2;
       }
       const frequency = Math.max(0.001, Math.min(1.0, task.frequency + frequencyVariation));
