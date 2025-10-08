@@ -158,11 +158,17 @@ const AdvancedVisualizations = () => {
       if (!response.responses) return;
       
       Object.entries(response.responses).forEach(([taskName, taskInfo]) => {
-        if (taskName === selectedTask && taskInfo.maxTime) {
-          taskTimes.push(parseFloat(taskInfo.maxTime));
+        if (taskName === selectedTask) {
+          // Handle both string and number formats
+          const maxTime = taskInfo.maxTime ? parseFloat(taskInfo.maxTime) : null;
+          if (maxTime && !isNaN(maxTime)) {
+            taskTimes.push(maxTime);
+          }
         }
       });
     });
+
+    console.log(`Distribution for ${selectedTask}: ${taskTimes.length} data points`);
 
     if (taskTimes.length === 0) {
       setDistributionData([]);
@@ -172,30 +178,37 @@ const AdvancedVisualizations = () => {
     // Create time buckets
     const min = Math.min(...taskTimes);
     const max = Math.max(...taskTimes);
-    const bucketSize = Math.ceil((max - min) / 6);
+    const range = max - min;
+    
+    // If range is very small, adjust bucket size
+    const bucketSize = range < 10 ? Math.max(1, Math.ceil(range / 6)) : Math.ceil(range / 6);
+    const bucketCount = Math.min(6, Math.ceil(range / bucketSize));
     
     const buckets = {};
-    for (let i = 0; i < 6; i++) {
-      const start = min + (i * bucketSize);
-      const end = start + bucketSize;
+    for (let i = 0; i < bucketCount; i++) {
+      const start = Math.round(min + (i * bucketSize));
+      const end = Math.round(start + bucketSize);
       const label = `${start}-${end} min`;
       buckets[label] = 0;
     }
 
     taskTimes.forEach(time => {
-      const bucketIndex = Math.min(Math.floor((time - min) / bucketSize), 5);
-      const start = min + (bucketIndex * bucketSize);
-      const end = start + bucketSize;
+      const bucketIndex = Math.min(Math.floor((time - min) / bucketSize), bucketCount - 1);
+      const start = Math.round(min + (bucketIndex * bucketSize));
+      const end = Math.round(start + bucketSize);
       const label = `${start}-${end} min`;
-      buckets[label]++;
+      if (buckets[label] !== undefined) {
+        buckets[label]++;
+      }
     });
 
     const distributionResult = Object.entries(buckets).map(([bucket, count]) => ({
       time_bucket: bucket,
       count: count,
-      percentage: Math.round((count / taskTimes.length) * 100)
+      percentage: taskTimes.length > 0 ? Math.round((count / taskTimes.length) * 100) : 0
     }));
 
+    console.log('Distribution result:', distributionResult);
     setDistributionData(distributionResult);
   };
 
