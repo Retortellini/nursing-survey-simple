@@ -1,9 +1,11 @@
-// src/App.tsx - WITH PASSWORD PROTECTION AND VISIBLE LINKS
-import React from 'react';
+// src/App.tsx - WITH DATA MODE SWITCHER
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Activity, LogOut, Menu } from 'lucide-react';
 import { usePasswordAuth } from './hooks/usePasswordAuth';
 import { PasswordProtect } from './components/PasswordProtect';
+import { DataModeSwitcher } from './components/DataModeSwitcher';
+import { createTestModeBanner, removeTestModeBanner, isTestMode } from './lib/supabase';
 import Dashboard from './components/Dashboard';
 import NurseSurvey from './components/NurseSurvey';
 import CNASurvey from './components/CNASurvey';
@@ -15,7 +17,6 @@ import DataQuality from './components/DataQuality';
 import ComparativeAnalytics from './components/ComparativeAnalytics';
 import AdvancedVisualizations from './components/AdvancedVisualizations';
 import Contact from "./components/Contact"; 
-
 
 const Header = () => {
   const location = useLocation();
@@ -182,6 +183,25 @@ const Header = () => {
 };
 
 const App = () => {
+  const { userLevel } = usePasswordAuth();
+  
+  // Show data mode switcher only to admin users
+  const showDataSwitcher = userLevel === 'admin';
+
+  // Setup test mode banner
+  useEffect(() => {
+    if (isTestMode()) {
+      createTestModeBanner();
+    } else {
+      removeTestModeBanner();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      removeTestModeBanner();
+    };
+  }, []);
+
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
@@ -235,6 +255,9 @@ const App = () => {
             } />
           </Routes>
         </main>
+
+        {/* Data Mode Switcher - Only visible to admin users */}
+        {showDataSwitcher && <DataModeSwitcher />}
         
         <footer className="bg-white border-t py-6 mt-10">
           <div className="container mx-auto px-4 text-center text-gray-500">
