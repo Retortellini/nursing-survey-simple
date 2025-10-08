@@ -93,11 +93,10 @@ const Simulation = () => {
         for (const cnaRatio of params.cnaRatios) {
           const completionRates = []; // Store all iteration results for confidence intervals
 
-          for (let i = 0; i < params.iterations; i++) {
+for (let i = 0; i < params.iterations; i++) {
             let totalRnTime = 0;
             let totalCnaTime = 0;
 
-            // Process each task
             taskData.forEach(task => {
               const avgTime = (task.avg_min_time + task.avg_max_time) / 2;
               const stdDev = task.std_dev || (task.avg_max_time - task.avg_min_time) / 4;
@@ -106,42 +105,48 @@ const Simulation = () => {
                                task.task_name.toLowerCase().includes('hygiene') || 
                                task.task_name.toLowerCase().includes('mobility') ||
                                task.task_name.toLowerCase().includes('toileting') ||
-                               task.task_name.toLowerCase().includes('feeding');
+                               task.task_name.toLowerCase().includes('feeding') ||
+                               task.task_name.toLowerCase().includes('i&o') ||
+                               task.task_name.toLowerCase().includes('safety rounds') ||
+                               task.task_name.toLowerCase().includes('room turnover');
+              
+              // Generate random time with normal distribution
+              const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
+              const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
+              const probability = avgFrequencies[task.task_name] || 0.5;
               
               if (!isCnaTask) {
                 // RN tasks
-                const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
-                const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
-                const probability = avgFrequencies[task.task_name] || 0.5;
-                
-                // One-time tasks vs per-patient tasks
+                // One-time tasks (once per shift regardless of patients)
                 if (task.task_name.toLowerCase().includes('handoff') || 
-                    task.task_name.toLowerCase().includes('report')) {
-                  totalRnTime += taskTime; // Once per shift
+                    task.task_name.toLowerCase().includes('report') ||
+                    task.task_name.toLowerCase().includes('chart review')) {
+                  totalRnTime += taskTime;
                 } else {
-                  // Per patient, using survey-reported frequency
-                  for (let p = 0; p < nurseRatio; p++) {
-                    if (Math.random() < probability) {
-                      totalRnTime += taskTime;
-                    }
-                  }
+                  // Per-patient tasks: task time × number of patients × occurrence probability
+                  const patientsNeedingTask = Math.round(nurseRatio * probability);
+                  totalRnTime += taskTime * patientsNeedingTask;
                 }
               } else {
-                // CNA tasks
-                const randomTime = avgTime + (Math.random() - 0.5) * 2 * stdDev;
-                const taskTime = Math.max(task.avg_min_time, Math.min(task.avg_max_time, randomTime));
-                const probability = avgFrequencies[task.task_name] || 0.5;
-                
-                for (let p = 0; p < cnaRatio; p++) {
-                  if (Math.random() < probability) {
-                    totalCnaTime += taskTime;
-                  }
-                }
+                // CNA tasks - per patient with probability
+                const patientsNeedingTask = Math.round(cnaRatio * probability);
+                totalCnaTime += taskTime * patientsNeedingTask;
               }
             });
 
             const shiftMinutes = params.shiftHours * 60;
-            const completed = (totalRnTime <= shiftMinutes && totalCnaTime <= shiftMinutes);
+            const rnCompleted = totalRnTime <= shiftMinutes;
+            const cnaCompleted = totalCnaTime <= shiftMinutes;
+            const completed = rnCompleted && cnaCompleted;
+            
+            // Debug first iteration
+            if (i === 0) {
+              console.log(`First iteration for RN 1:${nurseRatio}, CNA 1:${cnaRatio}:`);
+              console.log(`  RN Time: ${Math.round(totalRnTime)} min (limit: ${shiftMinutes} min)`);
+              console.log(`  CNA Time: ${Math.round(totalCnaTime)} min (limit: ${shiftMinutes} min)`);
+              console.log(`  Completed: ${completed}`);
+            }
+            
             completionRates.push(completed ? 100 : 0);
           }
 
